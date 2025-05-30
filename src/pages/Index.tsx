@@ -16,13 +16,18 @@ import {
   Shield,
   FileText,
   BarChart3,
-  Settings
+  Settings,
+  Cloud
 } from "lucide-react";
 import AWSHeader from "@/components/AWSHeader";
 import EC2Dashboard from "@/components/EC2Dashboard";
 import S3Dashboard from "@/components/S3Dashboard";
 import RDSDashboard from "@/components/RDSDashboard";
 import BillingDashboard from "@/components/BillingDashboard";
+import LambdaDashboard from "@/components/LambdaDashboard";
+import IAMDashboard from "@/components/IAMDashboard";
+import CloudFormationDashboard from "@/components/CloudFormationDashboard";
+import DeploymentGuide from "@/components/DeploymentGuide";
 
 const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
@@ -224,6 +229,28 @@ const Index = () => {
                   <Users className="h-4 w-4 mr-2" />
                   IAM
                 </Button>
+                <Button
+                  variant={activeService === "cloudformation" ? "secondary" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => setActiveService("cloudformation")}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  CloudFormation
+                </Button>
+              </div>
+
+              <div className="pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Tools
+                </h3>
+                <Button
+                  variant={activeService === "deployment" ? "secondary" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => setActiveService("deployment")}
+                >
+                  <Cloud className="h-4 w-4 mr-2" />
+                  Deployment Guide
+                </Button>
               </div>
             </nav>
           </div>
@@ -236,6 +263,10 @@ const Index = () => {
           {activeService === "s3" && <S3Dashboard />}
           {activeService === "rds" && <RDSDashboard />}
           {activeService === "billing" && <BillingDashboard />}
+          {activeService === "lambda" && <LambdaDashboard />}
+          {activeService === "iam" && <IAMDashboard />}
+          {activeService === "cloudformation" && <CloudFormationDashboard />}
+          {activeService === "deployment" && <DeploymentGuide />}
         </div>
       </div>
     </div>
