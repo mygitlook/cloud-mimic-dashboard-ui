@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,11 +89,11 @@ const RDSDashboard = () => {
   ];
 
   const instanceClasses = [
-    { value: "db.t3.micro", label: "db.t3.micro (1 vCPU, 1 GiB RAM) - $0.017/hour", specs: "1 vCPU, 1 GiB" },
-    { value: "db.t3.small", label: "db.t3.small (2 vCPUs, 2 GiB RAM) - $0.034/hour", specs: "2 vCPUs, 2 GiB" },
-    { value: "db.t3.medium", label: "db.t3.medium (2 vCPUs, 4 GiB RAM) - $0.068/hour", specs: "2 vCPUs, 4 GiB" },
-    { value: "db.r5.large", label: "db.r5.large (2 vCPUs, 16 GiB RAM) - $0.24/hour", specs: "2 vCPUs, 16 GiB" },
-    { value: "db.r5.xlarge", label: "db.r5.xlarge (4 vCPUs, 32 GiB RAM) - $0.48/hour", specs: "4 vCPUs, 32 GiB" }
+    { value: "db.t3.micro", label: "db.t3.micro (1 vCPU, 1 GiB RAM) - $0.017/hour", specs: "1 vCPU, 1 GiB", hourlyRate: 0.017 },
+    { value: "db.t3.small", label: "db.t3.small (2 vCPUs, 2 GiB RAM) - $0.034/hour", specs: "2 vCPUs, 2 GiB", hourlyRate: 0.034 },
+    { value: "db.t3.medium", label: "db.t3.medium (2 vCPUs, 4 GiB RAM) - $0.068/hour", specs: "2 vCPUs, 4 GiB", hourlyRate: 0.068 },
+    { value: "db.r5.large", label: "db.r5.large (2 vCPUs, 16 GiB RAM) - $0.24/hour", specs: "2 vCPUs, 16 GiB", hourlyRate: 0.24 },
+    { value: "db.r5.xlarge", label: "db.r5.xlarge (4 vCPUs, 32 GiB RAM) - $0.48/hour", specs: "4 vCPUs, 32 GiB", hourlyRate: 0.48 }
   ];
 
   const handleCreateDatabase = () => {
@@ -162,6 +161,12 @@ const RDSDashboard = () => {
     const rate = hourlyRates[db.class] || 0;
     return sum + (rate * 24 * 30);
   }, 0);
+
+  const getEstimatedMonthlyCost = () => {
+    if (!newDatabase.instanceClass) return 0;
+    const selectedInstance = instanceClasses.find(ic => ic.value === newDatabase.instanceClass);
+    return selectedInstance ? selectedInstance.hourlyRate * 24 * 30 : 0;
+  };
 
   return (
     <div className="space-y-6">
@@ -338,10 +343,7 @@ const RDSDashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      ${newDatabase.instanceClass ? 
-                        (instanceClasses.find(ic => ic.value === newDatabase.instanceClass)?.label.match(/\$(\d+\.\d+)/)?.[1] || 0) * 24 * 30 
-                        : 0
-                      }/month
+                      ${getEstimatedMonthlyCost().toFixed(2)}/month
                     </div>
                     <p className="text-xs text-gray-500">
                       Based on {newDatabase.instanceClass || "selected instance class"} running 24/7
