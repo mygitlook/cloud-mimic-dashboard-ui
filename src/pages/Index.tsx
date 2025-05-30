@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,8 @@ import {
   FileText,
   BarChart3,
   Settings,
-  Cloud
+  Cloud,
+  Network
 } from "lucide-react";
 import AWSHeader from "@/components/AWSHeader";
 import EC2Dashboard from "@/components/EC2Dashboard";
@@ -28,6 +28,8 @@ import LambdaDashboard from "@/components/LambdaDashboard";
 import IAMDashboard from "@/components/IAMDashboard";
 import CloudFormationDashboard from "@/components/CloudFormationDashboard";
 import DeploymentGuide from "@/components/DeploymentGuide";
+import VPCDashboard from "@/components/VPCDashboard";
+import ElasticLoadBalancerDashboard from "@/components/ElasticLoadBalancerDashboard";
 
 const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
@@ -141,114 +143,136 @@ const Index = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <AWSHeader />
       
-      <div className="flex">
+      <div className="flex flex-col lg:flex-row">
         {/* Sidebar */}
-        <div className="w-64 bg-white shadow-sm border-r min-h-screen">
-          <div className="p-4">
-            <h2 className="font-semibold text-gray-900 mb-4">AWS Services</h2>
-            <nav className="space-y-2">
+        <div className="w-full lg:w-64 bg-white shadow-sm border-r">
+          <div className="p-3 lg:p-4">
+            <h2 className="font-semibold text-gray-900 mb-4 text-sm lg:text-base">AWS Services</h2>
+            <nav className="space-y-1 lg:space-y-2">
               <Button
                 variant={activeService === "dashboard" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start text-xs lg:text-sm"
                 onClick={() => setActiveService("dashboard")}
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
+                <BarChart3 className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                 Dashboard
               </Button>
               
-              <div className="pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
                   Compute
                 </h3>
                 <Button
                   variant={activeService === "ec2" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("ec2")}
                 >
-                  <Server className="h-4 w-4 mr-2" />
+                  <Server className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   EC2
                 </Button>
                 <Button
                   variant={activeService === "lambda" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("lambda")}
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  <Zap className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   Lambda
                 </Button>
               </div>
 
-              <div className="pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
                   Storage
                 </h3>
                 <Button
                   variant={activeService === "s3" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("s3")}
                 >
-                  <HardDrive className="h-4 w-4 mr-2" />
+                  <HardDrive className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   S3
                 </Button>
               </div>
 
-              <div className="pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
                   Database
                 </h3>
                 <Button
                   variant={activeService === "rds" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("rds")}
                 >
-                  <Database className="h-4 w-4 mr-2" />
+                  <Database className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   RDS
                 </Button>
               </div>
 
-              <div className="pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
+                  Networking
+                </h3>
+                <Button
+                  variant={activeService === "vpc" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("vpc")}
+                >
+                  <Globe className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  VPC
+                </Button>
+                <Button
+                  variant={activeService === "elb" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("elb")}
+                >
+                  <Network className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Load Balancer
+                </Button>
+              </div>
+
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
                   Management
                 </h3>
                 <Button
                   variant={activeService === "billing" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("billing")}
                 >
-                  <DollarSign className="h-4 w-4 mr-2" />
+                  <DollarSign className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   Billing
                 </Button>
                 <Button
                   variant={activeService === "iam" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("iam")}
                 >
-                  <Users className="h-4 w-4 mr-2" />
+                  <Users className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   IAM
                 </Button>
                 <Button
                   variant={activeService === "cloudformation" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("cloudformation")}
                 >
-                  <FileText className="h-4 w-4 mr-2" />
+                  <FileText className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   CloudFormation
                 </Button>
               </div>
 
-              <div className="pt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
                   Tools
                 </h3>
                 <Button
                   variant={activeService === "deployment" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("deployment")}
                 >
-                  <Cloud className="h-4 w-4 mr-2" />
+                  <Cloud className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   Deployment Guide
                 </Button>
               </div>
@@ -257,7 +281,7 @@ const Index = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 lg:p-6 min-w-0">
           {activeService === "dashboard" && renderDashboard()}
           {activeService === "ec2" && <EC2Dashboard />}
           {activeService === "s3" && <S3Dashboard />}
@@ -266,6 +290,8 @@ const Index = () => {
           {activeService === "lambda" && <LambdaDashboard />}
           {activeService === "iam" && <IAMDashboard />}
           {activeService === "cloudformation" && <CloudFormationDashboard />}
+          {activeService === "vpc" && <VPCDashboard />}
+          {activeService === "elb" && <ElasticLoadBalancerDashboard />}
           {activeService === "deployment" && <DeploymentGuide />}
         </div>
       </div>

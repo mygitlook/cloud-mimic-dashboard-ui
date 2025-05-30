@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,44 +22,53 @@ import {
 } from "lucide-react";
 
 const EC2Dashboard = () => {
-  const [instances, setInstances] = useState([
-    {
-      id: "i-0123456789abcdef0",
-      name: "Web Server 1",
-      type: "t3.medium",
-      state: "running",
-      az: "us-east-1a",
-      publicIp: "54.123.45.67",
-      privateIp: "10.0.1.100",
-      launchTime: "2024-01-15 10:30 AM",
-      keyPair: "my-key-pair",
-      securityGroup: "web-sg"
-    },
-    {
-      id: "i-0987654321fedcba0",
-      name: "Database Server",
-      type: "t3.large",
-      state: "stopped",
-      az: "us-east-1b",
-      publicIp: "-",
-      privateIp: "10.0.2.50",
-      launchTime: "2024-01-14 02:15 PM",
-      keyPair: "db-key-pair",
-      securityGroup: "db-sg"
-    },
-    {
-      id: "i-0246813579bdfeca0",
-      name: "Load Balancer",
-      type: "t3.small",
-      state: "running",
-      az: "us-east-1c",
-      publicIp: "34.123.45.89",
-      privateIp: "10.0.3.25",
-      launchTime: "2024-01-16 08:45 AM",
-      keyPair: "lb-key-pair",
-      securityGroup: "lb-sg"
-    }
-  ]);
+  // Load instances from localStorage on component mount
+  const [instances, setInstances] = useState(() => {
+    const savedInstances = localStorage.getItem('ec2-instances');
+    return savedInstances ? JSON.parse(savedInstances) : [
+      {
+        id: "i-0123456789abcdef0",
+        name: "Web Server 1",
+        type: "t3.medium",
+        state: "running",
+        az: "us-east-1a",
+        publicIp: "54.123.45.67",
+        privateIp: "10.0.1.100",
+        launchTime: "2024-01-15 10:30 AM",
+        keyPair: "my-key-pair",
+        securityGroup: "web-sg"
+      },
+      {
+        id: "i-0987654321fedcba0",
+        name: "Database Server",
+        type: "t3.large",
+        state: "stopped",
+        az: "us-east-1b",
+        publicIp: "-",
+        privateIp: "10.0.2.50",
+        launchTime: "2024-01-14 02:15 PM",
+        keyPair: "db-key-pair",
+        securityGroup: "db-sg"
+      },
+      {
+        id: "i-0246813579bdfeca0",
+        name: "Load Balancer",
+        type: "t3.small",
+        state: "running",
+        az: "us-east-1c",
+        publicIp: "34.123.45.89",
+        privateIp: "10.0.3.25",
+        launchTime: "2024-01-16 08:45 AM",
+        keyPair: "lb-key-pair",
+        securityGroup: "lb-sg"
+      }
+    ];
+  });
+
+  // Save instances to localStorage whenever instances change
+  useEffect(() => {
+    localStorage.setItem('ec2-instances', JSON.stringify(instances));
+  }, [instances]);
 
   const [showLaunchDialog, setShowLaunchDialog] = useState(false);
   const [newInstance, setNewInstance] = useState({
@@ -123,6 +131,35 @@ const EC2Dashboard = () => {
     }, 3000);
   };
 
+  const handleInstanceAction = (instanceId: string, action: 'start' | 'stop' | 'reboot' | 'terminate') => {
+    setInstances(prev => prev.map(instance => {
+      if (instance.id === instanceId) {
+        switch (action) {
+          case 'start':
+            return { ...instance, state: 'running', publicIp: `54.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` };
+          case 'stop':
+            return { ...instance, state: 'stopped', publicIp: '-' };
+          case 'reboot':
+            return { ...instance, state: 'rebooting' };
+          case 'terminate':
+            return null; // Will be filtered out
+          default:
+            return instance;
+        }
+      }
+      return instance;
+    }).filter(Boolean) as typeof instances);
+
+    // Simulate state changes
+    if (action === 'reboot') {
+      setTimeout(() => {
+        setInstances(prev => prev.map(instance => 
+          instance.id === instanceId ? { ...instance, state: 'running' } : instance
+        ));
+      }, 2000);
+    }
+  };
+
   const getStateColor = (state: string) => {
     switch (state) {
       case "running": return "bg-green-100 text-green-800";
@@ -138,12 +175,12 @@ const EC2Dashboard = () => {
   const totalInstances = instances.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 p-4 max-w-full overflow-x-auto">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">EC2 Dashboard</h1>
-          <p className="text-gray-600">Amazon Elastic Compute Cloud</p>
+          <h1 className="text-xl sm:text-2xl font-bold">EC2 Dashboard</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Amazon Elastic Compute Cloud</p>
         </div>
         <Dialog open={showLaunchDialog} onOpenChange={setShowLaunchDialog}>
           <DialogTrigger asChild>
@@ -327,7 +364,7 @@ const EC2Dashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Instances</CardTitle>
@@ -376,59 +413,81 @@ const EC2Dashboard = () => {
       {/* Instances Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Instances</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Instances</CardTitle>
           <CardDescription>Manage your EC2 instances</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Instance ID</TableHead>
-                <TableHead>Instance Type</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Availability Zone</TableHead>
-                <TableHead>Public IPv4</TableHead>
-                <TableHead>Private IPv4</TableHead>
-                <TableHead>Launch Time</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instances.map((instance) => (
-                <TableRow key={instance.id}>
-                  <TableCell className="font-medium">{instance.name}</TableCell>
-                  <TableCell className="font-mono text-sm">{instance.id}</TableCell>
-                  <TableCell>{instance.type}</TableCell>
-                  <TableCell>
-                    <Badge className={getStateColor(instance.state)}>
-                      {instance.state}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{instance.az}</TableCell>
-                  <TableCell className="font-mono text-sm">{instance.publicIp}</TableCell>
-                  <TableCell className="font-mono text-sm">{instance.privateIp}</TableCell>
-                  <TableCell>{instance.launchTime}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Play className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Square className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <RotateCcw className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-red-600">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="overflow-x-auto">
+          <div className="min-w-[800px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Instance ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>AZ</TableHead>
+                  <TableHead>Public IP</TableHead>
+                  <TableHead>Private IP</TableHead>
+                  <TableHead>Launch Time</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {instances.map((instance) => (
+                  <TableRow key={instance.id}>
+                    <TableCell className="font-medium">{instance.name}</TableCell>
+                    <TableCell className="font-mono text-xs sm:text-sm">{instance.id}</TableCell>
+                    <TableCell>{instance.type}</TableCell>
+                    <TableCell>
+                      <Badge className={getStateColor(instance.state)}>
+                        {instance.state}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{instance.az}</TableCell>
+                    <TableCell className="font-mono text-xs sm:text-sm">{instance.publicIp}</TableCell>
+                    <TableCell className="font-mono text-xs sm:text-sm">{instance.privateIp}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">{instance.launchTime}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleInstanceAction(instance.id, 'start')}
+                          disabled={instance.state === 'running'}
+                        >
+                          <Play className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleInstanceAction(instance.id, 'stop')}
+                          disabled={instance.state === 'stopped'}
+                        >
+                          <Square className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleInstanceAction(instance.id, 'reboot')}
+                          disabled={instance.state !== 'running'}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600"
+                          onClick={() => handleInstanceAction(instance.id, 'terminate')}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
