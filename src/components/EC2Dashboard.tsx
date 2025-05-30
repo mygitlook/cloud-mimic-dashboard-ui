@@ -18,7 +18,8 @@ import {
   Monitor,
   HardDrive,
   Cpu,
-  Activity
+  Activity,
+  DollarSign
 } from "lucide-react";
 
 const EC2Dashboard = () => {
@@ -65,9 +66,19 @@ const EC2Dashboard = () => {
     ];
   });
 
+  // Helper function to update instances and notify other components
+  const updateInstances = (newInstances: typeof instances) => {
+    setInstances(newInstances);
+    localStorage.setItem('ec2-instances', JSON.stringify(newInstances));
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+  };
+
   // Save instances to localStorage whenever instances change
   useEffect(() => {
     localStorage.setItem('ec2-instances', JSON.stringify(instances));
+    // Dispatch event to update dashboard
+    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
   }, [instances]);
 
   const [showLaunchDialog, setShowLaunchDialog] = useState(false);
@@ -81,12 +92,12 @@ const EC2Dashboard = () => {
   });
 
   const instanceTypes = [
-    { value: "t3.micro", label: "t3.micro (1 vCPU, 1 GiB RAM) - $0.0104/hour", specs: "1 vCPU, 1 GiB RAM" },
-    { value: "t3.small", label: "t3.small (2 vCPUs, 2 GiB RAM) - $0.0208/hour", specs: "2 vCPUs, 2 GiB RAM" },
-    { value: "t3.medium", label: "t3.medium (2 vCPUs, 4 GiB RAM) - $0.0416/hour", specs: "2 vCPUs, 4 GiB RAM" },
-    { value: "t3.large", label: "t3.large (2 vCPUs, 8 GiB RAM) - $0.0832/hour", specs: "2 vCPUs, 8 GiB RAM" },
-    { value: "m5.large", label: "m5.large (2 vCPUs, 8 GiB RAM) - $0.096/hour", specs: "2 vCPUs, 8 GiB RAM" },
-    { value: "c5.large", label: "c5.large (2 vCPUs, 4 GiB RAM) - $0.085/hour", specs: "2 vCPUs, 4 GiB RAM" },
+    { value: "t3.micro", label: "t3.micro (1 vCPU, 1 GiB RAM) - $0.0104/hour", specs: "1 vCPU, 1 GiB RAM", hourlyRate: 0.0104 },
+    { value: "t3.small", label: "t3.small (2 vCPUs, 2 GiB RAM) - $0.0208/hour", specs: "2 vCPUs, 2 GiB RAM", hourlyRate: 0.0208 },
+    { value: "t3.medium", label: "t3.medium (2 vCPUs, 4 GiB RAM) - $0.0416/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0416 },
+    { value: "t3.large", label: "t3.large (2 vCPUs, 8 GiB RAM) - $0.0832/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0832 },
+    { value: "m5.large", label: "m5.large (2 vCPUs, 8 GiB RAM) - $0.096/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.096 },
+    { value: "c5.large", label: "c5.large (2 vCPUs, 4 GiB RAM) - $0.085/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.085 },
   ];
 
   const amis = [
@@ -95,6 +106,19 @@ const EC2Dashboard = () => {
     { value: "ami-0123456789abcdef1", label: "Windows Server 2022", description: "Microsoft Windows Server 2022 Base" },
     { value: "ami-0fedcba987654321b", label: "Red Hat Enterprise Linux 9", description: "Red Hat Enterprise Linux 9 (HVM), SSD Volume Type" },
   ];
+
+  const getInstanceCost = (type: string, state: string) => {
+    if (state !== "running") return 0;
+    const hourlyRates: { [key: string]: number } = {
+      "t3.micro": 0.0104,
+      "t3.small": 0.0208,
+      "t3.medium": 0.0416,
+      "t3.large": 0.0832,
+      "m5.large": 0.096,
+      "c5.large": 0.085
+    };
+    return (hourlyRates[type] || 0.05) * 24 * 30; // Monthly cost
+  };
 
   const handleLaunchInstance = () => {
     const newInstanceData = {
@@ -110,7 +134,7 @@ const EC2Dashboard = () => {
       securityGroup: newInstance.securityGroup
     };
 
-    setInstances([...instances, newInstanceData]);
+    updateInstances([...instances, newInstanceData]);
     setShowLaunchDialog(false);
     setNewInstance({
       name: "",
@@ -123,7 +147,7 @@ const EC2Dashboard = () => {
 
     // Simulate instance starting up
     setTimeout(() => {
-      setInstances(prev => prev.map(instance => 
+      updateInstances(prev => prev.map(instance => 
         instance.id === newInstanceData.id 
           ? { ...instance, state: "running", publicIp: `54.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` }
           : instance
@@ -132,7 +156,7 @@ const EC2Dashboard = () => {
   };
 
   const handleInstanceAction = (instanceId: string, action: 'start' | 'stop' | 'reboot' | 'terminate') => {
-    setInstances(prev => prev.map(instance => {
+    updateInstances(prev => prev.map(instance => {
       if (instance.id === instanceId) {
         switch (action) {
           case 'start':
@@ -153,7 +177,7 @@ const EC2Dashboard = () => {
     // Simulate state changes
     if (action === 'reboot') {
       setTimeout(() => {
-        setInstances(prev => prev.map(instance => 
+        updateInstances(prev => prev.map(instance => 
           instance.id === instanceId ? { ...instance, state: 'running' } : instance
         ));
       }, 2000);
@@ -173,6 +197,7 @@ const EC2Dashboard = () => {
   const runningInstances = instances.filter(i => i.state === "running").length;
   const stoppedInstances = instances.filter(i => i.state === "stopped").length;
   const totalInstances = instances.length;
+  const totalMonthlyCost = instances.reduce((total, instance) => total + getInstanceCost(instance.type, instance.state), 0);
 
   return (
     <div className="space-y-4 p-4 max-w-full overflow-x-auto">
@@ -363,8 +388,8 @@ const EC2Dashboard = () => {
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Instances</CardTitle>
@@ -372,7 +397,7 @@ const EC2Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalInstances}</div>
-            <p className="text-xs text-muted-foreground">Across all regions</p>
+            <p className="text-xs text-muted-foreground">All states</p>
           </CardContent>
         </Card>
 
@@ -401,11 +426,22 @@ const EC2Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Monthly Cost</CardTitle>
-            <Monitor className="h-4 w-4 text-blue-500" />
+            <DollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$127.45</div>
-            <p className="text-xs text-muted-foreground">Estimated</p>
+            <div className="text-2xl font-bold">${totalMonthlyCost.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Running instances</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Cost/Instance</CardTitle>
+            <Monitor className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${runningInstances > 0 ? (totalMonthlyCost / runningInstances).toFixed(2) : '0.00'}</div>
+            <p className="text-xs text-muted-foreground">Per month</p>
           </CardContent>
         </Card>
       </div>
@@ -413,11 +449,11 @@ const EC2Dashboard = () => {
       {/* Instances Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Instances</CardTitle>
-          <CardDescription>Manage your EC2 instances</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Instances ({totalInstances})</CardTitle>
+          <CardDescription>Manage your EC2 instances and view costs</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <div className="min-w-[800px]">
+          <div className="min-w-[1000px]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -428,6 +464,7 @@ const EC2Dashboard = () => {
                   <TableHead>AZ</TableHead>
                   <TableHead>Public IP</TableHead>
                   <TableHead>Private IP</TableHead>
+                  <TableHead>Monthly Cost</TableHead>
                   <TableHead>Launch Time</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -446,6 +483,11 @@ const EC2Dashboard = () => {
                     <TableCell>{instance.az}</TableCell>
                     <TableCell className="font-mono text-xs sm:text-sm">{instance.publicIp}</TableCell>
                     <TableCell className="font-mono text-xs sm:text-sm">{instance.privateIp}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className={instance.state === "running" ? "text-green-600" : "text-gray-400"}>
+                        ${getInstanceCost(instance.type, instance.state).toFixed(2)}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-xs sm:text-sm">{instance.launchTime}</TableCell>
                     <TableCell>
                       <div className="flex space-x-1">

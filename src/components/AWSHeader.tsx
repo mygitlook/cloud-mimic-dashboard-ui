@@ -6,7 +6,8 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { 
   Bell, 
@@ -14,12 +15,18 @@ import {
   User, 
   Globe, 
   ChevronDown,
-  HelpCircle
+  HelpCircle,
+  CreditCard,
+  LifeBuoy,
+  Settings,
+  LogOut
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 const AWSHeader = () => {
   const [region, setRegion] = useState("us-east-1");
+  const { toast } = useToast();
 
   const regions = [
     { id: "us-east-1", name: "US East (N. Virginia)", flag: "🇺🇸" },
@@ -27,6 +34,59 @@ const AWSHeader = () => {
     { id: "eu-west-1", name: "Europe (Ireland)", flag: "🇮🇪" },
     { id: "ap-southeast-1", name: "Asia Pacific (Singapore)", flag: "🇸🇬" },
   ];
+
+  const handleProfileAction = (action: string) => {
+    switch (action) {
+      case 'account':
+        toast({
+          title: "My Account",
+          description: "Redirecting to account settings...",
+        });
+        break;
+      case 'billing':
+        toast({
+          title: "Billing Dashboard",
+          description: "Opening billing dashboard...",
+        });
+        // In a real app, this would navigate to billing
+        break;
+      case 'support':
+        toast({
+          title: "Support Cases",
+          description: "Opening support center...",
+        });
+        break;
+      case 'switch-role':
+        toast({
+          title: "Switch Role",
+          description: "Role switching interface would open here...",
+        });
+        break;
+      case 'signout':
+        toast({
+          title: "Signed Out",
+          description: "You have been successfully signed out.",
+        });
+        // In a real app, this would handle logout
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleNotifications = () => {
+    toast({
+      title: "Notifications",
+      description: "You have 3 unread notifications",
+    });
+  };
+
+  const handleHelp = () => {
+    toast({
+      title: "AWS Support",
+      description: "Opening AWS documentation and support resources...",
+    });
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3">
@@ -100,12 +160,12 @@ const AWSHeader = () => {
           </DropdownMenu>
 
           {/* Help */}
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={handleHelp}>
             <HelpCircle className="h-4 w-4" />
           </Button>
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
+          <Button variant="ghost" size="sm" className="relative" onClick={handleNotifications}>
             <Bell className="h-4 w-4" />
             <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">
               3
@@ -121,12 +181,29 @@ const AWSHeader = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>My Account</DropdownMenuItem>
-              <DropdownMenuItem>My Billing Dashboard</DropdownMenuItem>
-              <DropdownMenuItem>My Support Cases</DropdownMenuItem>
-              <DropdownMenuItem>Switch Role</DropdownMenuItem>
-              <DropdownMenuItem>Sign Out</DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => handleProfileAction('account')}>
+                <User className="mr-2 h-4 w-4" />
+                My Account
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleProfileAction('billing')}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                My Billing Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleProfileAction('support')}>
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                My Support Cases
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleProfileAction('switch-role')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Switch Role
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleProfileAction('signout')}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

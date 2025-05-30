@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +34,60 @@ import ElasticLoadBalancerDashboard from "@/components/ElasticLoadBalancerDashbo
 
 const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
+  const [ec2Stats, setEc2Stats] = useState({ total: 0, running: 0, stopped: 0, cost: 0 });
+
+  // Load EC2 instances from localStorage and calculate stats
+  useEffect(() => {
+    const updateEC2Stats = () => {
+      const savedInstances = localStorage.getItem('ec2-instances');
+      if (savedInstances) {
+        const instances = JSON.parse(savedInstances);
+        const running = instances.filter((i: any) => i.state === "running").length;
+        const stopped = instances.filter((i: any) => i.state === "stopped").length;
+        
+        // Calculate cost based on instance types and running status
+        const cost = instances.reduce((total: number, instance: any) => {
+          if (instance.state === "running") {
+            const hourlyRates: { [key: string]: number } = {
+              "t3.micro": 0.0104,
+              "t3.small": 0.0208,
+              "t3.medium": 0.0416,
+              "t3.large": 0.0832,
+              "m5.large": 0.096,
+              "c5.large": 0.085
+            };
+            return total + (hourlyRates[instance.type] || 0.05) * 24 * 30; // Monthly cost
+          }
+          return total;
+        }, 0);
+
+        setEc2Stats({
+          total: instances.length,
+          running,
+          stopped,
+          cost: parseFloat(cost.toFixed(2))
+        });
+      }
+    };
+
+    updateEC2Stats();
+    
+    // Listen for storage changes to update stats in real-time
+    const handleStorageChange = () => updateEC2Stats();
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events when instances are modified within the same tab
+    const handleInstanceUpdate = () => updateEC2Stats();
+    window.addEventListener('ec2-instances-updated', handleInstanceUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('ec2-instances-updated', handleInstanceUpdate);
+    };
+  }, [activeService]);
 
   const services = [
-    { id: "ec2", name: "EC2", icon: Server, description: "Virtual Servers in the Cloud", status: "running", instances: 3 },
+    { id: "ec2", name: "EC2", icon: Server, description: "Virtual Servers in the Cloud", status: "running", instances: ec2Stats.total },
     { id: "s3", name: "S3", icon: HardDrive, description: "Scalable Storage in the Cloud", status: "active", buckets: 8 },
     { id: "rds", name: "RDS", icon: Database, description: "Managed Relational Database", status: "running", databases: 2 },
     { id: "lambda", name: "Lambda", icon: Zap, description: "Serverless Computing", status: "active", functions: 12 },
@@ -70,12 +122,66 @@ const Index = () => {
                 {service.stacks && service.stacks}
               </div>
               <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
-              <Badge variant={service.status === "running" ? "default" : "secondary"} className="mt-2">
-                {service.status}
-              </Badge>
+              <div className="flex items-center justify-between mt-2">
+                <Badge variant={service.status === "running" ? "default" : "secondary"}>
+                  {service.status}
+                </Badge>
+                {service.id === "ec2" && ec2Stats.cost > 0 && (
+                  <span className="text-xs text-green-600 font-medium">${ec2Stats.cost}/mo</span>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">EC2 Instances</CardTitle>
+            <Server className="h-4 w-4 text-[#FF9900]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{ec2Stats.total}</div>
+            <p className="text-xs text-muted-foreground">
+              {ec2Stats.running} running, {ec2Stats.stopped} stopped
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">EC2 Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${ec2Stats.cost}</div>
+            <p className="text-xs text-muted-foreground">Monthly estimate</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Storage</CardTitle>
+            <HardDrive className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">847 GB</div>
+            <p className="text-xs text-muted-foreground">Across all services</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <Activity className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${(247.83 + ec2Stats.cost).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">This month</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Activity & Cost Overview */}
@@ -111,22 +217,32 @@ const Index = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
-              Cost Overview
+              Cost Breakdown
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm">This Month</span>
-                <span className="font-bold text-lg">$247.83</span>
+                <span className="text-sm">EC2 Instances</span>
+                <span className="font-bold">${ec2Stats.cost}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Last Month</span>
-                <span className="text-sm text-muted-foreground">$189.42</span>
+                <span className="text-sm">S3 Storage</span>
+                <span className="text-sm text-muted-foreground">$23.45</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Forecasted</span>
-                <span className="text-sm text-orange-600">$312.45</span>
+                <span className="text-sm">RDS Database</span>
+                <span className="text-sm text-muted-foreground">$89.20</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Other Services</span>
+                <span className="text-sm text-muted-foreground">$135.18</span>
+              </div>
+              <div className="border-t pt-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total This Month</span>
+                  <span className="font-bold text-lg">${(247.83 + ec2Stats.cost).toFixed(2)}</span>
+                </div>
               </div>
               <Button 
                 variant="outline" 
