@@ -243,15 +243,16 @@ const BillingDashboard = () => {
                 <TableBody>
                   {dailyCosts.map((day, index) => {
                     const previousDay = dailyCosts[index - 1];
-                    const change = previousDay ? ((day.cost - previousDay.cost) / previousDay.cost * 100).toFixed(1) : 0;
+                    const changeValue = previousDay ? ((day.cost - previousDay.cost) / previousDay.cost * 100) : 0;
+                    const changeString = changeValue.toFixed(1);
                     return (
                       <TableRow key={day.date}>
                         <TableCell>{day.date}</TableCell>
                         <TableCell>${day.cost}</TableCell>
                         <TableCell>
                           {previousDay && (
-                            <Badge variant={parseFloat(change) > 0 ? "destructive" : "default"}>
-                              {parseFloat(change) > 0 ? '+' : ''}{change}%
+                            <Badge variant={changeValue > 0 ? "destructive" : "default"}>
+                              {changeValue > 0 ? '+' : ''}{changeString}%
                             </Badge>
                           )}
                         </TableCell>

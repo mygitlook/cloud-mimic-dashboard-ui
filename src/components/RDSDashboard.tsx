@@ -152,14 +152,15 @@ const RDSDashboard = () => {
   const stoppedDatabases = databases.filter(db => db.status === "stopped").length;
   const totalDatabases = databases.length;
   const monthlyCost = databases.reduce((sum, db) => {
-    const hourlyRates = {
+    const hourlyRates: { [key: string]: number } = {
       "db.t3.micro": 0.017,
       "db.t3.small": 0.034, 
       "db.t3.medium": 0.068,
       "db.r5.large": 0.24,
       "db.r5.xlarge": 0.48
     };
-    return sum + (hourlyRates[db.class] || 0) * 24 * 30;
+    const rate = hourlyRates[db.class] || 0;
+    return sum + (rate * 24 * 30);
   }, 0);
 
   return (
