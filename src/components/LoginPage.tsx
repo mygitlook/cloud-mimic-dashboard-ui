@@ -94,11 +94,6 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-gray-600">
-            <p>Default credentials:</p>
-            <p>Username: john_paul</p>
-            <p>Password: jp&6557</p>
-          </div>
         </CardContent>
       </Card>
     </div>

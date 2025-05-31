@@ -41,20 +41,20 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
   ];
 
   const services = [
-    { id: "ec2", name: "EC2", description: "Virtual Machines" },
-    { id: "s3", name: "S3", description: "Object Storage" },
-    { id: "rds", name: "RDS", description: "Managed Database" },
-    { id: "lambda", name: "Lambda", description: "Serverless Computing" },
-    { id: "vpc", name: "VPC", description: "Virtual Private Cloud" },
-    { id: "elb", name: "Load Balancer", description: "Load Balancing" },
-    { id: "iam", name: "IAM", description: "Identity Management" },
-    { id: "cloudformation", name: "CloudFormation", description: "Infrastructure as Code" },
-    { id: "archive", name: "Archive Storage", description: "Long-term Storage" },
-    { id: "cdn", name: "CDN", description: "Content Delivery Network" },
-    { id: "waf", name: "Web Firewall", description: "Web Application Firewall" },
-    { id: "ml", name: "Machine Learning", description: "ML Model Training" },
-    { id: "monitoring", name: "Monitoring", description: "Monitoring & Logging" },
-    { id: "backup", name: "Backup", description: "Backup Storage" }
+    { id: "ec2", name: "Virtual Machines", description: "Virtual Machines", keywords: ["virtual", "machine", "vm", "compute", "ec2"] },
+    { id: "s3", name: "Object Storage", description: "Object Storage", keywords: ["storage", "object", "s3", "bucket"] },
+    { id: "rds", name: "Database", description: "Managed Database", keywords: ["database", "rds", "sql", "mysql"] },
+    { id: "lambda", name: "Serverless", description: "Serverless Computing", keywords: ["lambda", "serverless", "function"] },
+    { id: "vpc", name: "VPC", description: "Virtual Private Cloud", keywords: ["vpc", "network", "virtual", "private", "cloud"] },
+    { id: "elb", name: "Load Balancer", description: "Load Balancing", keywords: ["load", "balancer", "elb", "traffic"] },
+    { id: "iam", name: "Identity Management", description: "Identity Management", keywords: ["iam", "identity", "access", "user"] },
+    { id: "cloudformation", name: "Infrastructure", description: "Infrastructure as Code", keywords: ["cloudformation", "infrastructure", "template"] },
+    { id: "archive", name: "Archive Storage", description: "Long-term Storage", keywords: ["archive", "storage", "backup"] },
+    { id: "cdn", name: "CDN", description: "Content Delivery Network", keywords: ["cdn", "content", "delivery", "network"] },
+    { id: "waf", name: "Web Firewall", description: "Web Application Firewall", keywords: ["waf", "firewall", "security", "web"] },
+    { id: "ml", name: "Machine Learning", description: "ML Model Training", keywords: ["machine", "learning", "ml", "ai", "model"] },
+    { id: "monitoring", name: "Monitoring", description: "Monitoring & Logging", keywords: ["monitoring", "logs", "cloudwatch"] },
+    { id: "backup", name: "Backup", description: "Backup Storage", keywords: ["backup", "storage", "recovery"] }
   ];
 
   const handleProfileAction = (action: string) => {
@@ -114,6 +114,9 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
     e.preventDefault();
     if (searchQuery.trim()) {
       const matchedService = services.find(service => 
+        service.keywords.some(keyword => 
+          keyword.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
         service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         service.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -141,53 +144,61 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
   };
 
   const filteredServices = services.filter(service =>
+    service.keywords.some(keyword => 
+      keyword.toLowerCase().includes(searchQuery.toLowerCase())
+    ) ||
     service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     service.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3">
+    <header className="bg-gradient-to-r from-blue-600 to-indigo-700 border-b border-blue-500 px-6 py-3 shadow-lg">
       <div className="flex items-center justify-between">
         {/* Left side - Logo and Services */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#2563eb] rounded flex items-center justify-center">
-              <span className="text-white font-bold text-xs">ZC</span>
+            <div className="w-8 h-8 bg-white rounded flex items-center justify-center shadow-md">
+              <span className="text-blue-600 font-bold text-xs">ZC</span>
             </div>
-            <span className="font-semibold text-gray-900">Zeltra Connect</span>
+            <span className="font-semibold text-white text-lg">Zeltra Connect</span>
           </div>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm">
+              <Button variant="ghost" className="text-sm text-white hover:bg-blue-500/20">
                 Services
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64 bg-white">
+            <DropdownMenuContent className="w-64 bg-white shadow-xl border-0">
               <div className="p-2">
                 <Input 
                   placeholder="Search services..." 
-                  className="mb-2"
+                  className="mb-2 border-gray-200"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <div className="space-y-1">
                   <DropdownMenuItem className="font-medium text-gray-500">
-                    Recently used
+                    {searchQuery ? 'Search Results' : 'Recently used'}
                   </DropdownMenuItem>
                   {(searchQuery ? filteredServices : services.slice(0, 8)).map((service) => (
                     <DropdownMenuItem 
                       key={service.id}
                       onClick={() => handleServiceClick(service.id)}
-                      className="cursor-pointer hover:bg-gray-100"
+                      className="cursor-pointer hover:bg-blue-50 rounded-md"
                     >
                       <div>
-                        <div className="font-medium">{service.name}</div>
+                        <div className="font-medium text-gray-900">{service.name}</div>
                         <div className="text-xs text-gray-500">{service.description}</div>
                       </div>
                     </DropdownMenuItem>
                   ))}
+                  {searchQuery && filteredServices.length === 0 && (
+                    <DropdownMenuItem disabled>
+                      <div className="text-gray-500">No services found</div>
+                    </DropdownMenuItem>
+                  )}
                 </div>
               </div>
             </DropdownMenuContent>
@@ -200,7 +211,7 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
               placeholder="Search for services, features, blogs, docs, and more"
-              className="pl-10"
+              className="pl-10 bg-white/90 border-white/20 focus:bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -212,15 +223,15 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
           {/* Region Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm">
+              <Button variant="ghost" className="text-sm text-white hover:bg-blue-500/20">
                 <Globe className="h-4 w-4 mr-1" />
                 {regions.find(r => r.id === region)?.flag} {region}
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white">
+            <DropdownMenuContent className="bg-white shadow-xl border-0">
               {regions.map((r) => (
-                <DropdownMenuItem key={r.id} onClick={() => setRegion(r.id)}>
+                <DropdownMenuItem key={r.id} onClick={() => setRegion(r.id)} className="hover:bg-blue-50">
                   <span className="mr-2">{r.flag}</span>
                   <div>
                     <div className="font-medium">{r.id}</div>
@@ -232,12 +243,12 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
           </DropdownMenu>
 
           {/* Help */}
-          <Button variant="ghost" size="sm" onClick={handleHelp}>
+          <Button variant="ghost" size="sm" onClick={handleHelp} className="text-white hover:bg-blue-500/20">
             <HelpCircle className="h-4 w-4" />
           </Button>
 
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative" onClick={handleNotifications}>
+          <Button variant="ghost" size="sm" className="relative text-white hover:bg-blue-500/20" onClick={handleNotifications}>
             <Bell className="h-4 w-4" />
             <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">
               3
@@ -247,32 +258,32 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm">
+              <Button variant="ghost" className="text-sm text-white hover:bg-blue-500/20">
                 <User className="h-4 w-4 mr-1" />
                 John Paul
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-white">
-              <DropdownMenuItem onClick={() => handleProfileAction('account')} className="cursor-pointer">
+            <DropdownMenuContent align="end" className="w-56 bg-white shadow-xl border-0">
+              <DropdownMenuItem onClick={() => handleProfileAction('account')} className="cursor-pointer hover:bg-blue-50">
                 <User className="mr-2 h-4 w-4" />
                 My Account
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleProfileAction('billing')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => handleProfileAction('billing')} className="cursor-pointer hover:bg-blue-50">
                 <CreditCard className="mr-2 h-4 w-4" />
                 My Billing Dashboard
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleProfileAction('support')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => handleProfileAction('support')} className="cursor-pointer hover:bg-blue-50">
                 <LifeBuoy className="mr-2 h-4 w-4" />
                 My Support Cases
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleProfileAction('switch-role')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => handleProfileAction('switch-role')} className="cursor-pointer hover:bg-blue-50">
                 <Settings className="mr-2 h-4 w-4" />
                 Switch Role
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleProfileAction('signout')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => handleProfileAction('signout')} className="cursor-pointer hover:bg-red-50 text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
