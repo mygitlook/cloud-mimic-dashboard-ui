@@ -19,6 +19,7 @@ import {
   Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mockBackend } from "@/utils/mockBackend";
 
 interface Instance {
   id: string;
@@ -37,6 +38,7 @@ const EC2Dashboard = () => {
   const [newInstanceName, setNewInstanceName] = useState("");
   const [selectedInstanceType, setSelectedInstanceType] = useState("");
   const [selectedAMI, setSelectedAMI] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const instanceTypes = [
@@ -46,7 +48,7 @@ const EC2Dashboard = () => {
     { id: "t3.large", name: "t3.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.068 },
     { id: "m5.large", name: "m5.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.079 },
     { id: "c5.large", name: "c5.large", specs: "2 vCPUs, 4 GB RAM", hourlyRate: 0.070 },
-    { id: "virtual-pc", name: "Virtual PC", specs: "4 vCPUs, 16 GB RAM", hourlyRate: 2.92 } // £70.10 per month / 24 hours / 30 days
+    { id: "virtual-pc", name: "Virtual PC", specs: "4 vCPUs, 16 GB RAM", hourlyRate: 2.92 }
   ];
 
   const amis = [
@@ -61,62 +63,54 @@ const EC2Dashboard = () => {
     loadInstances();
   }, []);
 
-  const loadInstances = () => {
-    const savedInstances = localStorage.getItem('ec2-instances');
-    if (savedInstances) {
-      setInstances(JSON.parse(savedInstances));
-    } else {
-      // Default instances
-      const defaultInstances: Instance[] = [
-        {
-          id: "i-1234567890abcdef0",
-          name: "web-server-01",
-          type: "t3.medium",
-          state: "running",
-          publicIP: "54.123.45.67",
-          privateIP: "10.0.1.10",
-          launchTime: "2024-01-15T10:30:00Z",
-          ami: "ami-12345"
-        },
-        {
-          id: "i-0987654321fedcba0",
-          name: "database-server",
-          type: "m5.large",
-          state: "stopped",
-          publicIP: "-",
-          privateIP: "10.0.1.20",
-          launchTime: "2024-01-10T14:20:00Z",
-          ami: "ami-67890"
-        },
-        {
-          id: "i-abcdef1234567890",
-          name: "load-balancer",
-          type: "c5.large",
-          state: "running",
-          publicIP: "52.87.123.45",
-          privateIP: "10.0.1.30",
-          launchTime: "2024-01-12T09:15:00Z",
-          ami: "ami-11111"
-        }
-      ];
-      setInstances(defaultInstances);
-      saveInstances(defaultInstances);
+  const loadInstances = async () => {
+    try {
+      setIsLoading(true);
+      const serverInstances = await mockBackend.getInstances();
+      setInstances(serverInstances);
+      // Also sync with localStorage for immediate local access
+      localStorage.setItem('ec2-instances', JSON.stringify(serverInstances));
+    } catch (error) {
+      console.error('Failed to load instances from server:', error);
+      // Fallback to localStorage
+      const savedInstances = localStorage.getItem('ec2-instances');
+      if (savedInstances) {
+        setInstances(JSON.parse(savedInstances));
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const saveInstances = (instanceList: Instance[]) => {
-    localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
-    // Dispatch custom event to update dashboard stats
-    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+  const saveInstances = async (instanceList: Instance[]) => {
+    try {
+      // Save to mock backend (simulates server persistence)
+      await mockBackend.saveInstances(instanceList);
+      // Also save locally for immediate access
+      localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
+      // Dispatch custom event to update dashboard stats
+      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+    } catch (error) {
+      console.error('Failed to save instances to server:', error);
+      // Still save locally as fallback
+      localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
+      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+    }
+  };
+
+  const calculateHourlyCost = (type: string, state: string) => {
+    if (state !== "running") return 0;
+    const instanceType = instanceTypes.find(t => t.id === type);
+    return instanceType ? instanceType.hourlyRate : 0;
   };
 
   const calculateMonthlyCost = (type: string, state: string) => {
     if (state !== "running") return 0;
-    const instanceType = instanceTypes.find(t => t.id === type);
-    return instanceType ? instanceType.hourlyRate * 24 * 30 : 0;
+    const hourlyRate = calculateHourlyCost(type, state);
+    return hourlyRate * 24 * 30; // Monthly estimate
   };
 
-  const launchInstance = () => {
+  const launchInstance = async () => {
     if (!newInstanceName || !selectedInstanceType || !selectedAMI) {
       toast({
         title: "Error",
@@ -137,47 +131,64 @@ const EC2Dashboard = () => {
       ami: selectedAMI
     };
 
-    const updatedInstances = [...instances, newInstance];
-    setInstances(updatedInstances);
-    saveInstances(updatedInstances);
+    try {
+      await mockBackend.addInstance(newInstance);
+      const updatedInstances = [...instances, newInstance];
+      setInstances(updatedInstances);
+      
+      toast({
+        title: "Instance Launched",
+        description: `${newInstanceName} has been launched successfully`,
+      });
 
-    toast({
-      title: "Instance Launched",
-      description: `${newInstanceName} has been launched successfully`,
-    });
-
-    setIsLaunchDialogOpen(false);
-    setNewInstanceName("");
-    setSelectedInstanceType("");
-    setSelectedAMI("");
+      setIsLaunchDialogOpen(false);
+      setNewInstanceName("");
+      setSelectedInstanceType("");
+      setSelectedAMI("");
+    } catch (error) {
+      console.error('Failed to launch instance:', error);
+      toast({
+        title: "Error",
+        description: "Failed to launch instance. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const startInstance = (id: string) => {
-    const updatedInstances = instances.map(instance =>
-      instance.id === id ? { ...instance, state: "running" as const } : instance
-    );
-    setInstances(updatedInstances);
-    saveInstances(updatedInstances);
-    
-    const instance = instances.find(i => i.id === id);
-    toast({
-      title: "Instance Started",
-      description: `${instance?.name} is now running`,
-    });
+  const startInstance = async (id: string) => {
+    try {
+      await mockBackend.updateInstance(id, { state: "running" });
+      const updatedInstances = instances.map(instance =>
+        instance.id === id ? { ...instance, state: "running" as const } : instance
+      );
+      setInstances(updatedInstances);
+      
+      const instance = instances.find(i => i.id === id);
+      toast({
+        title: "Instance Started",
+        description: `${instance?.name} is now running`,
+      });
+    } catch (error) {
+      console.error('Failed to start instance:', error);
+    }
   };
 
-  const stopInstance = (id: string) => {
-    const updatedInstances = instances.map(instance =>
-      instance.id === id ? { ...instance, state: "stopped" as const } : instance
-    );
-    setInstances(updatedInstances);
-    saveInstances(updatedInstances);
-    
-    const instance = instances.find(i => i.id === id);
-    toast({
-      title: "Instance Stopped",
-      description: `${instance?.name} has been stopped`,
-    });
+  const stopInstance = async (id: string) => {
+    try {
+      await mockBackend.updateInstance(id, { state: "stopped" });
+      const updatedInstances = instances.map(instance =>
+        instance.id === id ? { ...instance, state: "stopped" as const } : instance
+      );
+      setInstances(updatedInstances);
+      
+      const instance = instances.find(i => i.id === id);
+      toast({
+        title: "Instance Stopped",
+        description: `${instance?.name} has been stopped`,
+      });
+    } catch (error) {
+      console.error('Failed to stop instance:', error);
+    }
   };
 
   const rebootInstance = (id: string) => {
@@ -188,24 +199,44 @@ const EC2Dashboard = () => {
     });
   };
 
-  const terminateInstance = (id: string) => {
-    const instance = instances.find(i => i.id === id);
-    const updatedInstances = instances.filter(i => i.id !== id);
-    setInstances(updatedInstances);
-    saveInstances(updatedInstances);
-    
-    toast({
-      title: "Instance Terminated",
-      description: `${instance?.name} has been terminated`,
-      variant: "destructive",
-    });
+  const terminateInstance = async (id: string) => {
+    try {
+      const instance = instances.find(i => i.id === id);
+      await mockBackend.deleteInstance(id);
+      const updatedInstances = instances.filter(i => i.id !== id);
+      setInstances(updatedInstances);
+      
+      toast({
+        title: "Instance Terminated",
+        description: `${instance?.name} has been terminated`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error('Failed to terminate instance:', error);
+    }
   };
 
   const runningInstances = instances.filter(i => i.state === "running").length;
   const stoppedInstances = instances.filter(i => i.state === "stopped").length;
+  const totalHourlyCost = instances.reduce((sum, instance) => 
+    sum + calculateHourlyCost(instance.type, instance.state), 0
+  );
   const totalMonthlyCost = instances.reduce((sum, instance) => 
     sum + calculateMonthlyCost(instance.type, instance.state), 0
   );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563eb] mx-auto mb-4"></div>
+            <p>Loading instances...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -251,7 +282,7 @@ const EC2Dashboard = () => {
                         <div>
                           <div className="font-medium">{type.name}</div>
                           <div className="text-xs text-gray-500">
-                            {type.specs} - £{type.hourlyRate.toFixed(4)}/hour
+                            {type.specs} - £{type.hourlyRate.toFixed(2)}/hour (£{(type.hourlyRate * 24 * 30).toFixed(2)}/month)
                           </div>
                         </div>
                       </SelectItem>
@@ -313,12 +344,12 @@ const EC2Dashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stopped</CardTitle>
-            <Square className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Hourly Cost</CardTitle>
+            <Zap className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stoppedInstances}</div>
-            <p className="text-xs text-muted-foreground">Inactive instances</p>
+            <div className="text-2xl font-bold">£{totalHourlyCost.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Current rate</p>
           </CardContent>
         </Card>
 
@@ -350,7 +381,8 @@ const EC2Dashboard = () => {
                 <TableHead>State</TableHead>
                 <TableHead>Public IP</TableHead>
                 <TableHead>Private IP</TableHead>
-                <TableHead>Monthly Cost</TableHead>
+                <TableHead>Hourly Cost</TableHead>
+                <TableHead>Monthly Est.</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -367,7 +399,8 @@ const EC2Dashboard = () => {
                   </TableCell>
                   <TableCell>{instance.publicIP}</TableCell>
                   <TableCell>{instance.privateIP}</TableCell>
-                  <TableCell>£{calculateMonthlyCost(instance.type, instance.state).toFixed(2)}</TableCell>
+                  <TableCell>£{calculateHourlyCost(instance.type, instance.state).toFixed(2)}/hr</TableCell>
+                  <TableCell>£{calculateMonthlyCost(instance.type, instance.state).toFixed(2)}/mo</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       {instance.state === "stopped" ? (

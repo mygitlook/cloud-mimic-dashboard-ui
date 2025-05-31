@@ -43,17 +43,40 @@ import PremiumSupportDashboard from "@/components/PremiumSupportDashboard";
 import DataTransferDashboard from "@/components/DataTransferDashboard";
 import BackupStorageDashboard from "@/components/BackupStorageDashboard";
 import MonitoringDashboard from "@/components/MonitoringDashboard";
+import LoginPage from "@/components/LoginPage";
+import { mockBackend } from "@/utils/mockBackend";
 
 const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [ec2Stats, setEc2Stats] = useState({ total: 0, running: 0, stopped: 0, cost: 0 });
 
-  // Load EC2 instances from localStorage and calculate stats
+  // Check for existing login session
   useEffect(() => {
-    const updateEC2Stats = () => {
-      const savedInstances = localStorage.getItem('ec2-instances');
-      if (savedInstances) {
-        const instances = JSON.parse(savedInstances);
+    const savedSession = localStorage.getItem('zeltra-session');
+    if (savedSession === 'logged-in') {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    localStorage.setItem('zeltra-session', 'logged-in');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('zeltra-session');
+    setActiveService("dashboard");
+  };
+
+  // Load EC2 instances and calculate stats
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const updateEC2Stats = async () => {
+      try {
+        const instances = await mockBackend.getInstances();
         const running = instances.filter((i: any) => i.state === "running").length;
         const stopped = instances.filter((i: any) => i.state === "stopped").length;
         
@@ -67,9 +90,10 @@ const Index = () => {
               "t3.large": 0.068,
               "m5.large": 0.079,
               "c5.large": 0.070,
-              "virtual-pc": 2.92 // £70.10 per month / 24 hours / 30 days
+              "virtual-pc": 2.92
             };
-            return total + (hourlyRates[instance.type] || 0.041) * 24 * 30; // Monthly cost in GBP
+            const hourlyRate = hourlyRates[instance.type] || 0.041;
+            return total + (hourlyRate * 24 * 30); // Monthly cost in GBP
           }
           return total;
         }, 0);
@@ -80,6 +104,39 @@ const Index = () => {
           stopped,
           cost: parseFloat(cost.toFixed(2))
         });
+      } catch (error) {
+        console.error('Failed to update EC2 stats:', error);
+        // Fallback to localStorage
+        const savedInstances = localStorage.getItem('ec2-instances');
+        if (savedInstances) {
+          const instances = JSON.parse(savedInstances);
+          const running = instances.filter((i: any) => i.state === "running").length;
+          const stopped = instances.filter((i: any) => i.state === "stopped").length;
+          
+          const cost = instances.reduce((total: number, instance: any) => {
+            if (instance.state === "running") {
+              const hourlyRates: { [key: string]: number } = {
+                "t3.micro": 0.0085,
+                "t3.small": 0.017,
+                "t3.medium": 0.034,
+                "t3.large": 0.068,
+                "m5.large": 0.079,
+                "c5.large": 0.070,
+                "virtual-pc": 2.92
+              };
+              const hourlyRate = hourlyRates[instance.type] || 0.041;
+              return total + (hourlyRate * 24 * 30);
+            }
+            return total;
+          }, 0);
+
+          setEc2Stats({
+            total: instances.length,
+            running,
+            stopped,
+            cost: parseFloat(cost.toFixed(2))
+          });
+        }
       }
     };
 
@@ -97,7 +154,11 @@ const Index = () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('ec2-instances-updated', handleInstanceUpdate);
     };
-  }, [activeService]);
+  }, [activeService, isLoggedIn]);
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   const services = [
     { id: "ec2", name: "Virtual Machines", icon: Server, description: "Scalable Virtual Servers", status: "running", instances: ec2Stats.total, cost: ec2Stats.cost },
@@ -265,12 +326,12 @@ const Index = () => {
                 <span className="text-sm text-muted-foreground">£3,280</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Virtual Machines</span>
-                <span className="text-sm text-muted-foreground">£{ec2Stats.cost}</span>
+                <span className="text-sm">Virtual Machines (29+8)</span>
+                <span className="text-sm text-muted-foreground">£{(2032.90 + 560.00).toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Other Services</span>
-                <span className="text-sm text-muted-foreground">£4,997</span>
+                <span className="text-sm text-muted-foreground">£2,404</span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between items-center">
@@ -294,7 +355,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
-      <ZeltraHeader onServiceSelect={handleServiceSelect} />
+      <ZeltraHeader onServiceSelect={handleServiceSelect} onLogout={handleLogout} />
       
       <div className="flex flex-col lg:flex-row">
         {/* Sidebar */}

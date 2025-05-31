@@ -16,6 +16,7 @@ import {
   FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generatePDFInvoice } from "@/utils/pdfInvoice";
 
 const BillingDashboard = () => {
   const { toast } = useToast();
@@ -30,13 +31,14 @@ const BillingDashboard = () => {
     { service: "Machine Learning", cost: 10000.00, percentage: 39.6, change: "+12.3%", units: "4 instances" },
     { service: "Premium Support", cost: 7000.00, percentage: 27.7, change: "+5.7%", units: "2 plans" },
     { service: "Web Application Firewall", cost: 3280.00, percentage: 13.0, change: "+8.1%", units: "41 instances" },
-    { service: "Virtual Machines", cost: 2592.90, percentage: 10.3, change: "+15.4%", units: "37 instances" },
-    { service: "Monitoring & Logging", cost: 1567.74, percentage: 6.2, change: "+23.4%", units: "39 instances" },
-    { service: "Backup Storage", cost: 360.00, percentage: 1.4, change: "+1.2%", units: "45 TB" },
-    { service: "Content Delivery Network", cost: 255.00, percentage: 1.0, change: "+3.5%", units: "17 TB" },
-    { service: "Object Storage", cost: 130.00, percentage: 0.5, change: "-2.1%", units: "13 TB" },
-    { service: "Archive Storage", cost: 90.40, percentage: 0.4, change: "+1.8%", units: "30 TB" },
-    { service: "Data Transfer", cost: 0.96, percentage: 0.0, change: "+0.5%", units: "16 TB" }
+    { service: "Virtual Machines (29 nodes)", cost: 2032.90, percentage: 8.0, change: "+15.4%", units: "29 instances @ £70.10/mo" },
+    { service: "Monitoring & Logging", cost: 1567.74, percentage: 6.2, change: "+23.4%", units: "39 instances @ £40.20" },
+    { service: "Additional Virtual Machines", cost: 560.00, percentage: 2.2, change: "+10.1%", units: "8 instances @ £70.00/mo" },
+    { service: "Backup Storage", cost: 360.00, percentage: 1.4, change: "+1.2%", units: "45 TB @ £8.00/TB" },
+    { service: "Content Delivery Network", cost: 255.00, percentage: 1.0, change: "+3.5%", units: "17 TB @ £15.00/TB" },
+    { service: "Object Storage", cost: 130.00, percentage: 0.5, change: "-2.1%", units: "13 TB @ £10.00/TB" },
+    { service: "Archive Storage", cost: 90.40, percentage: 0.4, change: "+1.8%", units: "30 TB @ £3.01/TB" },
+    { service: "Data Transfer", cost: 0.96, percentage: 0.0, change: "+0.5%", units: "16 TB @ £0.06/TB" }
   ];
 
   const costByRegion = [
@@ -89,46 +91,19 @@ const BillingDashboard = () => {
   ];
 
   const handleDownloadBill = (billMonth: string, amount: number) => {
-    // Generate a simple text-based bill content
-    const billContent = `
-ZELTRA CONNECT - INVOICE
-
-Bill Period: ${billMonth}
-Invoice Date: ${new Date().toLocaleDateString()}
-Amount: £${amount.toLocaleString()}
-
-Service Breakdown:
-- Machine Learning: £10,000.00
-- Premium Support: £7,000.00
-- Web Application Firewall: £3,280.00
-- Virtual Machines: £2,592.90
-- Monitoring & Logging: £1,567.74
-- Backup Storage: £360.00
-- Content Delivery Network: £255.00
-- Object Storage: £130.00
-- Archive Storage: £90.40
-- Data Transfer: £0.96
-
-Total: £${amount.toLocaleString()}
-
-Thank you for using Zeltra Connect services.
-    `;
-
-    // Create and download the file
-    const blob = new Blob([billContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `zeltra-connect-bill-${billMonth.replace(' ', '-').toLowerCase()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: "Bill Downloaded",
-      description: `Bill for ${billMonth} has been downloaded successfully`,
-    });
+    try {
+      generatePDFInvoice(billMonth, amount);
+      toast({
+        title: "Invoice Generated",
+        description: `PDF invoice for ${billMonth} has been generated successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF invoice. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewBill = (billMonth: string) => {
@@ -377,7 +352,7 @@ Thank you for using Zeltra Connect services.
                             onClick={() => handleDownloadBill(bill.month, bill.amount)}
                           >
                             <Download className="h-3 w-3 mr-1" />
-                            Download
+                            PDF
                           </Button>
                           {bill.status === "current" && (
                             <Button 
