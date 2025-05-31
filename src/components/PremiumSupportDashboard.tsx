@@ -274,7 +274,7 @@ const PremiumSupportDashboard = () => {
             <Clock className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">< 1hr</div>
+            <div className="text-2xl font-bold">{"< 1hr"}</div>
             <p className="text-xs text-muted-foreground">Average response time</p>
           </CardContent>
         </Card>
