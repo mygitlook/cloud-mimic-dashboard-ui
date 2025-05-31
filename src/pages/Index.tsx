@@ -18,9 +18,13 @@ import {
   BarChart3,
   Settings,
   Cloud,
-  Network
+  Network,
+  Archive,
+  Cpu,
+  Eye,
+  Save
 } from "lucide-react";
-import AWSHeader from "@/components/AWSHeader";
+import ZeltraHeader from "@/components/AWSHeader";
 import EC2Dashboard from "@/components/EC2Dashboard";
 import S3Dashboard from "@/components/S3Dashboard";
 import RDSDashboard from "@/components/RDSDashboard";
@@ -49,14 +53,14 @@ const Index = () => {
         const cost = instances.reduce((total: number, instance: any) => {
           if (instance.state === "running") {
             const hourlyRates: { [key: string]: number } = {
-              "t3.micro": 0.0104,
-              "t3.small": 0.0208,
-              "t3.medium": 0.0416,
-              "t3.large": 0.0832,
-              "m5.large": 0.096,
-              "c5.large": 0.085
+              "t3.micro": 0.0104 * 0.82, // Convert to GBP
+              "t3.small": 0.0208 * 0.82,
+              "t3.medium": 0.0416 * 0.82,
+              "t3.large": 0.0832 * 0.82,
+              "m5.large": 0.096 * 0.82,
+              "c5.large": 0.085 * 0.82
             };
-            return total + (hourlyRates[instance.type] || 0.05) * 24 * 30; // Monthly cost
+            return total + (hourlyRates[instance.type] || 0.041) * 24 * 30; // Monthly cost in GBP
           }
           return total;
         }, 0);
@@ -87,47 +91,61 @@ const Index = () => {
   }, [activeService]);
 
   const services = [
-    { id: "ec2", name: "EC2", icon: Server, description: "Virtual Servers in the Cloud", status: "running", instances: ec2Stats.total },
-    { id: "s3", name: "S3", icon: HardDrive, description: "Scalable Storage in the Cloud", status: "active", buckets: 8 },
-    { id: "rds", name: "RDS", icon: Database, description: "Managed Relational Database", status: "running", databases: 2 },
-    { id: "lambda", name: "Lambda", icon: Zap, description: "Serverless Computing", status: "active", functions: 12 },
-    { id: "iam", name: "IAM", icon: Users, description: "Identity and Access Management", status: "configured", users: 5 },
-    { id: "cloudformation", name: "CloudFormation", icon: FileText, description: "Infrastructure as Code", status: "active", stacks: 3 },
+    { id: "ec2", name: "Virtual Machines", icon: Server, description: "Scalable Virtual Servers", status: "running", instances: ec2Stats.total, cost: ec2Stats.cost },
+    { id: "s3", name: "Object Storage", icon: HardDrive, description: "Scalable Object Storage", status: "active", buckets: 13, cost: 130.00 },
+    { id: "rds", name: "Database", icon: Database, description: "Managed Relational Database", status: "running", databases: 2, cost: 450.00 },
+    { id: "lambda", name: "Serverless", icon: Zap, description: "Serverless Computing", status: "active", functions: 12, cost: 85.50 },
+    { id: "iam", name: "Identity Management", icon: Users, description: "Identity and Access Management", status: "configured", users: 5, cost: 0 },
+    { id: "cloudformation", name: "Infrastructure", icon: FileText, description: "Infrastructure as Code", status: "active", stacks: 3, cost: 25.00 },
+    { id: "archive", name: "Archive Storage", icon: Archive, description: "Long-term Archive Storage", status: "active", archives: 30, cost: 90.40 },
+    { id: "cdn", name: "CDN", icon: Globe, description: "Content Delivery Network", status: "active", transfers: 17, cost: 255.00 },
+    { id: "waf", name: "Web Firewall", icon: Shield, description: "Web Application Firewall", status: "active", instances: 41, cost: 3280.00 },
+    { id: "ml", name: "Machine Learning", icon: Cpu, description: "ML Model Training", status: "active", models: 4, cost: 10000.00 },
+    { id: "monitoring", name: "Monitoring", icon: Eye, description: "Monitoring & Logging", status: "active", instances: 39, cost: 1567.74 },
+    { id: "backup", name: "Backup", icon: Save, description: "Backup Storage", status: "active", backups: 45, cost: 360.00 }
   ];
 
   const recentActivity = [
-    { action: "Launched EC2 instance", resource: "i-0123456789abcdef0", time: "2 minutes ago", status: "success" },
-    { action: "Created S3 bucket", resource: "my-app-bucket-2024", time: "15 minutes ago", status: "success" },
-    { action: "Updated RDS instance", resource: "prod-database", time: "1 hour ago", status: "success" },
-    { action: "Deployed Lambda function", resource: "data-processor", time: "3 hours ago", status: "success" },
+    { action: "Launched VM instance", resource: "vm-0123456789abcdef0", time: "2 minutes ago", status: "success" },
+    { action: "Created storage bucket", resource: "my-app-bucket-2024", time: "15 minutes ago", status: "success" },
+    { action: "Updated database instance", resource: "prod-database", time: "1 hour ago", status: "success" },
+    { action: "Deployed serverless function", resource: "data-processor", time: "3 hours ago", status: "success" },
   ];
+
+  const handleServiceSelect = (serviceId: string) => {
+    setActiveService(serviceId);
+  };
 
   const renderDashboard = () => (
     <div className="space-y-6">
       {/* Service Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {services.map((service) => (
           <Card key={service.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveService(service.id)}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{service.name}</CardTitle>
-              <service.icon className="h-4 w-4 text-[#FF9900]" />
+              <service.icon className="h-4 w-4 text-[#2563eb]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-xl font-bold">
                 {service.instances && service.instances}
                 {service.buckets && service.buckets}
                 {service.databases && service.databases}
                 {service.functions && service.functions}
                 {service.users && service.users}
                 {service.stacks && service.stacks}
+                {service.archives && service.archives}
+                {service.transfers && service.transfers}
+                {service.models && service.models}
+                {service.backups && service.backups}
               </div>
               <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
               <div className="flex items-center justify-between mt-2">
-                <Badge variant={service.status === "running" ? "default" : "secondary"}>
+                <Badge variant={service.status === "running" ? "default" : "secondary"} className="text-xs">
                   {service.status}
                 </Badge>
-                {service.id === "ec2" && ec2Stats.cost > 0 && (
-                  <span className="text-xs text-green-600 font-medium">${ec2Stats.cost}/mo</span>
+                {service.cost !== undefined && service.cost > 0 && (
+                  <span className="text-xs text-green-600 font-medium">£{service.cost.toLocaleString()}/mo</span>
                 )}
               </div>
             </CardContent>
@@ -139,8 +157,8 @@ const Index = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">EC2 Instances</CardTitle>
-            <Server className="h-4 w-4 text-[#FF9900]" />
+            <CardTitle className="text-sm font-medium">VM Instances</CardTitle>
+            <Server className="h-4 w-4 text-[#2563eb]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{ec2Stats.total}</div>
@@ -152,11 +170,11 @@ const Index = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">EC2 Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">VM Cost</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${ec2Stats.cost}</div>
+            <div className="text-2xl font-bold">£{ec2Stats.cost}</div>
             <p className="text-xs text-muted-foreground">Monthly estimate</p>
           </CardContent>
         </Card>
@@ -178,7 +196,7 @@ const Index = () => {
             <Activity className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${(247.83 + ec2Stats.cost).toFixed(2)}</div>
+            <div className="text-2xl font-bold">£{(25277.00).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
@@ -223,25 +241,29 @@ const Index = () => {
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm">EC2 Instances</span>
-                <span className="font-bold">${ec2Stats.cost}</span>
+                <span className="text-sm">Machine Learning</span>
+                <span className="font-bold">£10,000</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">S3 Storage</span>
-                <span className="text-sm text-muted-foreground">$23.45</span>
+                <span className="text-sm">Premium Support</span>
+                <span className="text-sm text-muted-foreground">£7,000</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">RDS Database</span>
-                <span className="text-sm text-muted-foreground">$89.20</span>
+                <span className="text-sm">Web Firewall</span>
+                <span className="text-sm text-muted-foreground">£3,280</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Virtual Machines</span>
+                <span className="text-sm text-muted-foreground">£{ec2Stats.cost}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Other Services</span>
-                <span className="text-sm text-muted-foreground">$135.18</span>
+                <span className="text-sm text-muted-foreground">£4,997</span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total This Month</span>
-                  <span className="font-bold text-lg">${(247.83 + ec2Stats.cost).toFixed(2)}</span>
+                  <span className="font-bold text-lg">£{(25277.00).toLocaleString()}</span>
                 </div>
               </div>
               <Button 
@@ -260,13 +282,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
-      <AWSHeader />
+      <ZeltraHeader onServiceSelect={handleServiceSelect} />
       
       <div className="flex flex-col lg:flex-row">
         {/* Sidebar */}
         <div className="w-full lg:w-64 bg-white shadow-sm border-r">
           <div className="p-3 lg:p-4">
-            <h2 className="font-semibold text-gray-900 mb-4 text-sm lg:text-base">AWS Services</h2>
+            <h2 className="font-semibold text-gray-900 mb-4 text-sm lg:text-base">Zeltra Services</h2>
             <nav className="space-y-1 lg:space-y-2">
               <Button
                 variant={activeService === "dashboard" ? "secondary" : "ghost"}
@@ -287,7 +309,7 @@ const Index = () => {
                   onClick={() => setActiveService("ec2")}
                 >
                   <Server className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  EC2
+                  Virtual Machines
                 </Button>
                 <Button
                   variant={activeService === "lambda" ? "secondary" : "ghost"}
@@ -295,7 +317,15 @@ const Index = () => {
                   onClick={() => setActiveService("lambda")}
                 >
                   <Zap className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  Lambda
+                  Serverless
+                </Button>
+                <Button
+                  variant={activeService === "ml" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("ml")}
+                >
+                  <Cpu className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Machine Learning
                 </Button>
               </div>
 
@@ -309,7 +339,23 @@ const Index = () => {
                   onClick={() => setActiveService("s3")}
                 >
                   <HardDrive className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  S3
+                  Object Storage
+                </Button>
+                <Button
+                  variant={activeService === "archive" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("archive")}
+                >
+                  <Archive className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Archive Storage
+                </Button>
+                <Button
+                  variant={activeService === "backup" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("backup")}
+                >
+                  <Save className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Backup Storage
                 </Button>
               </div>
 
@@ -323,7 +369,7 @@ const Index = () => {
                   onClick={() => setActiveService("rds")}
                 >
                   <Database className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  RDS
+                  Database
                 </Button>
               </div>
 
@@ -347,6 +393,36 @@ const Index = () => {
                   <Network className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   Load Balancer
                 </Button>
+                <Button
+                  variant={activeService === "cdn" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("cdn")}
+                >
+                  <Globe className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  CDN
+                </Button>
+              </div>
+
+              <div className="pt-2 lg:pt-4">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 lg:mb-2">
+                  Security
+                </h3>
+                <Button
+                  variant={activeService === "iam" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("iam")}
+                >
+                  <Users className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Identity Management
+                </Button>
+                <Button
+                  variant={activeService === "waf" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("waf")}
+                >
+                  <Shield className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Web Firewall
+                </Button>
               </div>
 
               <div className="pt-2 lg:pt-4">
@@ -362,20 +438,20 @@ const Index = () => {
                   Billing
                 </Button>
                 <Button
-                  variant={activeService === "iam" ? "secondary" : "ghost"}
-                  className="w-full justify-start text-xs lg:text-sm"
-                  onClick={() => setActiveService("iam")}
-                >
-                  <Users className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  IAM
-                </Button>
-                <Button
                   variant={activeService === "cloudformation" ? "secondary" : "ghost"}
                   className="w-full justify-start text-xs lg:text-sm"
                   onClick={() => setActiveService("cloudformation")}
                 >
                   <FileText className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
-                  CloudFormation
+                  Infrastructure
+                </Button>
+                <Button
+                  variant={activeService === "monitoring" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("monitoring")}
+                >
+                  <Eye className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Monitoring
                 </Button>
               </div>
 
@@ -409,6 +485,43 @@ const Index = () => {
           {activeService === "vpc" && <VPCDashboard />}
           {activeService === "elb" && <ElasticLoadBalancerDashboard />}
           {activeService === "deployment" && <DeploymentGuide />}
+          {(activeService === "archive" || activeService === "cdn" || activeService === "waf" || activeService === "ml" || activeService === "monitoring" || activeService === "backup") && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {activeService === "archive" && "Archive Storage"}
+                  {activeService === "cdn" && "Content Delivery Network"}
+                  {activeService === "waf" && "Web Application Firewall"}
+                  {activeService === "ml" && "Machine Learning"}
+                  {activeService === "monitoring" && "Monitoring & Logging"}
+                  {activeService === "backup" && "Backup Storage"}
+                </h1>
+                <p className="text-gray-600">
+                  {activeService === "archive" && "Long-term data archival with 99.999999999% durability"}
+                  {activeService === "cdn" && "Global content delivery with low latency"}
+                  {activeService === "waf" && "Protect your web applications from common web exploits"}
+                  {activeService === "ml" && "Train and deploy machine learning models at scale"}
+                  {activeService === "monitoring" && "Monitor your infrastructure and applications"}
+                  {activeService === "backup" && "Automated backup and disaster recovery"}
+                </p>
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Service Dashboard</CardTitle>
+                  <CardDescription>Coming soon - Full dashboard for this service</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-4">🚧</div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Dashboard Under Development</h3>
+                    <p className="text-gray-600">
+                      The full dashboard for this service is being developed. Please check back soon!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

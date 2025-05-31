@@ -15,66 +15,69 @@ import {
 } from "lucide-react";
 
 const BillingDashboard = () => {
-  const currentMonthCost = 247.83;
-  const lastMonthCost = 189.42;
-  const forecastedCost = 312.45;
-  const budgetLimit = 300.00;
+  const currentMonthCost = 25277.00;
+  const lastMonthCost = 18942.00;
+  const forecastedCost = 31245.00;
+  const budgetLimit = 30000.00;
   const budgetUsed = (currentMonthCost / budgetLimit) * 100;
 
   const costByService = [
-    { service: "EC2-Instance", cost: 127.45, percentage: 51.4, change: "+12.3%" },
-    { service: "RDS", cost: 67.20, percentage: 27.1, change: "+5.7%" },
-    { service: "S3", cost: 23.80, percentage: 9.6, change: "-2.1%" },
-    { service: "Lambda", cost: 12.45, percentage: 5.0, change: "+23.4%" },
-    { service: "CloudFront", cost: 8.93, percentage: 3.6, change: "+1.2%" },
-    { service: "Route 53", cost: 5.00, percentage: 2.0, change: "0%" },
-    { service: "CloudWatch", cost: 3.00, percentage: 1.2, change: "+8.5%" }
+    { service: "Machine Learning", cost: 10000.00, percentage: 39.6, change: "+12.3%", units: "4 instances" },
+    { service: "Premium Support", cost: 7000.00, percentage: 27.7, change: "+5.7%", units: "2 plans" },
+    { service: "Web Application Firewall", cost: 3280.00, percentage: 13.0, change: "+8.1%", units: "41 instances" },
+    { service: "Virtual Machines", cost: 2592.90, percentage: 10.3, change: "+15.4%", units: "37 instances" },
+    { service: "Monitoring & Logging", cost: 1567.74, percentage: 6.2, change: "+23.4%", units: "39 instances" },
+    { service: "Backup Storage", cost: 360.00, percentage: 1.4, change: "+1.2%", units: "45 TB" },
+    { service: "Content Delivery Network", cost: 255.00, percentage: 1.0, change: "+3.5%", units: "17 TB" },
+    { service: "Object Storage", cost: 130.00, percentage: 0.5, change: "-2.1%", units: "13 TB" },
+    { service: "Archive Storage", cost: 90.40, percentage: 0.4, change: "+1.8%", units: "30 TB" },
+    { service: "Data Transfer", cost: 0.96, percentage: 0.0, change: "+0.5%", units: "16 TB" }
   ];
 
   const costByRegion = [
-    { region: "us-east-1", cost: 156.78, percentage: 63.3 },
-    { region: "us-west-2", cost: 45.32, percentage: 18.3 },
-    { region: "eu-west-1", cost: 28.90, percentage: 11.7 },
-    { region: "ap-southeast-1", cost: 16.83, percentage: 6.8 }
+    { region: "eu-west-1", cost: 15667.80, percentage: 62.0 },
+    { region: "eu-west-2", cost: 5055.40, percentage: 20.0 },
+    { region: "us-east-1", cost: 2527.70, percentage: 10.0 },
+    { region: "us-west-2", cost: 2025.10, percentage: 8.0 }
   ];
 
   const dailyCosts = [
-    { date: "2024-01-01", cost: 8.12 },
-    { date: "2024-01-02", cost: 7.89 },
-    { date: "2024-01-03", cost: 9.45 },
-    { date: "2024-01-04", cost: 8.76 },
-    { date: "2024-01-05", cost: 10.23 },
-    { date: "2024-01-06", cost: 9.87 },
-    { date: "2024-01-07", cost: 8.54 },
-    { date: "2024-01-08", cost: 11.32 },
-    { date: "2024-01-09", cost: 9.98 },
-    { date: "2024-01-10", cost: 8.43 }
+    { date: "2024-01-01", cost: 812.50 },
+    { date: "2024-01-02", cost: 789.30 },
+    { date: "2024-01-03", cost: 945.20 },
+    { date: "2024-01-04", cost: 876.40 },
+    { date: "2024-01-05", cost: 1023.10 },
+    { date: "2024-01-06", cost: 987.60 },
+    { date: "2024-01-07", cost: 854.20 },
+    { date: "2024-01-08", cost: 1132.80 },
+    { date: "2024-01-09", cost: 998.70 },
+    { date: "2024-01-10", cost: 843.90 }
   ];
 
   const bills = [
-    { month: "January 2024", amount: 247.83, status: "current", dueDate: "2024-02-01" },
-    { month: "December 2023", amount: 189.42, status: "paid", dueDate: "2024-01-01" },
-    { month: "November 2023", amount: 203.17, status: "paid", dueDate: "2023-12-01" },
-    { month: "October 2023", amount: 176.95, status: "paid", dueDate: "2023-11-01" },
-    { month: "September 2023", amount: 164.23, status: "paid", dueDate: "2023-10-01" }
+    { month: "January 2024", amount: 25277.00, status: "current", dueDate: "2024-02-01" },
+    { month: "December 2023", amount: 18942.00, status: "paid", dueDate: "2024-01-01" },
+    { month: "November 2023", amount: 20317.50, status: "paid", dueDate: "2023-12-01" },
+    { month: "October 2023", amount: 17695.20, status: "paid", dueDate: "2023-11-01" },
+    { month: "September 2023", amount: 16423.80, status: "paid", dueDate: "2023-10-01" }
   ];
 
   const costAlerts = [
     { 
       type: "Budget Alert", 
-      message: "You have exceeded 80% of your monthly budget ($300)",
+      message: "You have exceeded 84% of your monthly budget (£30,000)",
       severity: "warning",
       date: "2024-01-28"
     },
     {
       type: "Cost Spike",
-      message: "EC2 costs increased by 15% compared to last week",
+      message: "Machine Learning costs increased by 25% compared to last week",
       severity: "info", 
       date: "2024-01-27"
     },
     {
       type: "Forecast Alert",
-      message: "Projected to exceed budget by $12.45 this month",
+      message: "Projected to exceed budget by £1,245 this month",
       severity: "warning",
       date: "2024-01-26"
     }
@@ -103,7 +106,7 @@ const BillingDashboard = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Billing & Cost Management</h1>
-        <p className="text-gray-600">Monitor and manage your AWS costs</p>
+        <p className="text-gray-600">Monitor and manage your Zeltra Connect costs</p>
       </div>
 
       {/* Cost Overview Cards */}
@@ -111,13 +114,13 @@ const BillingDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <DollarSign className="h-4 w-4 text-[#FF9900]" />
+            <DollarSign className="h-4 w-4 text-[#2563eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${currentMonthCost}</div>
+            <div className="text-2xl font-bold">£{currentMonthCost.toLocaleString()}</div>
             <div className="flex items-center text-xs text-green-600">
               <TrendingUp className="h-3 w-3 mr-1" />
-              +30.8% from last month
+              +33.4% from last month
             </div>
           </CardContent>
         </Card>
@@ -128,7 +131,7 @@ const BillingDashboard = () => {
             <Calendar className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${lastMonthCost}</div>
+            <div className="text-2xl font-bold">£{lastMonthCost.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">December 2023</p>
           </CardContent>
         </Card>
@@ -139,10 +142,10 @@ const BillingDashboard = () => {
             <BarChart3 className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${forecastedCost}</div>
+            <div className="text-2xl font-bold">£{forecastedCost.toLocaleString()}</div>
             <div className="flex items-center text-xs text-red-600">
               <TrendingUp className="h-3 w-3 mr-1" />
-              Above budget by $12.45
+              Above budget by £{(forecastedCost - budgetLimit).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -155,7 +158,7 @@ const BillingDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{budgetUsed.toFixed(1)}%</div>
             <Progress value={budgetUsed} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">${budgetLimit} monthly budget</p>
+            <p className="text-xs text-muted-foreground mt-1">£{budgetLimit.toLocaleString()} monthly budget</p>
           </CardContent>
         </Card>
       </div>
@@ -185,14 +188,17 @@ const BillingDashboard = () => {
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium">{item.service}</span>
                           <div className="flex items-center space-x-2">
-                            <span className="text-sm font-bold">${item.cost}</span>
+                            <span className="text-sm font-bold">£{item.cost.toLocaleString()}</span>
                             <Badge variant={item.change.startsWith('+') ? "destructive" : "default"} className="text-xs">
                               {item.change}
                             </Badge>
                           </div>
                         </div>
                         <Progress value={item.percentage} className="h-2" />
-                        <span className="text-xs text-muted-foreground">{item.percentage}% of total</span>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-muted-foreground">{item.percentage}% of total</span>
+                          <span className="text-xs text-muted-foreground">{item.units}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -213,7 +219,7 @@ const BillingDashboard = () => {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium">{item.region}</span>
-                          <span className="text-sm font-bold">${item.cost}</span>
+                          <span className="text-sm font-bold">£{item.cost.toLocaleString()}</span>
                         </div>
                         <Progress value={item.percentage} className="h-2" />
                         <span className="text-xs text-muted-foreground">{item.percentage}% of total</span>
@@ -248,7 +254,7 @@ const BillingDashboard = () => {
                     return (
                       <TableRow key={day.date}>
                         <TableCell>{day.date}</TableCell>
-                        <TableCell>${day.cost}</TableCell>
+                        <TableCell>£{day.cost.toLocaleString()}</TableCell>
                         <TableCell>
                           {previousDay && (
                             <Badge variant={changeValue > 0 ? "destructive" : "default"}>
@@ -269,7 +275,7 @@ const BillingDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Billing History</CardTitle>
-              <CardDescription>View and download your AWS bills</CardDescription>
+              <CardDescription>View and download your Zeltra Connect bills</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -286,7 +292,7 @@ const BillingDashboard = () => {
                   {bills.map((bill) => (
                     <TableRow key={bill.month}>
                       <TableCell className="font-medium">{bill.month}</TableCell>
-                      <TableCell>${bill.amount}</TableCell>
+                      <TableCell>£{bill.amount.toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(bill.status)}>
                           {bill.status}
@@ -320,16 +326,16 @@ const BillingDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Monthly Budget</span>
-                  <span className="text-lg font-bold">${budgetLimit}</span>
+                  <span className="text-lg font-bold">£{budgetLimit.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Spent</span>
-                  <span className="text-lg font-bold">${currentMonthCost}</span>
+                  <span className="text-lg font-bold">£{currentMonthCost.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Remaining</span>
                   <span className={`text-lg font-bold ${budgetLimit - currentMonthCost < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    ${(budgetLimit - currentMonthCost).toFixed(2)}
+                    £{(budgetLimit - currentMonthCost).toLocaleString()}
                   </span>
                 </div>
                 <Progress value={budgetUsed} className="h-4" />
@@ -371,7 +377,7 @@ const BillingDashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Cost Explorer</CardTitle>
-              <CardDescription>Analyze your AWS costs and usage</CardDescription>
+              <CardDescription>Analyze your Zeltra Connect costs and usage</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">

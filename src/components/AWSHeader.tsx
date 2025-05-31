@@ -24,15 +24,37 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-const AWSHeader = () => {
-  const [region, setRegion] = useState("us-east-1");
+const ZeltraHeader = ({ onServiceSearch, onServiceSelect }: { 
+  onServiceSearch?: (query: string) => void;
+  onServiceSelect?: (service: string) => void;
+}) => {
+  const [region, setRegion] = useState("eu-west-1");
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const regions = [
+    { id: "eu-west-1", name: "Europe (Ireland)", flag: "🇮🇪" },
+    { id: "eu-west-2", name: "Europe (London)", flag: "🇬🇧" },
     { id: "us-east-1", name: "US East (N. Virginia)", flag: "🇺🇸" },
     { id: "us-west-2", name: "US West (Oregon)", flag: "🇺🇸" },
-    { id: "eu-west-1", name: "Europe (Ireland)", flag: "🇮🇪" },
     { id: "ap-southeast-1", name: "Asia Pacific (Singapore)", flag: "🇸🇬" },
+  ];
+
+  const services = [
+    { id: "ec2", name: "EC2", description: "Virtual Machines" },
+    { id: "s3", name: "S3", description: "Object Storage" },
+    { id: "rds", name: "RDS", description: "Managed Database" },
+    { id: "lambda", name: "Lambda", description: "Serverless Computing" },
+    { id: "vpc", name: "VPC", description: "Virtual Private Cloud" },
+    { id: "elb", name: "Load Balancer", description: "Load Balancing" },
+    { id: "iam", name: "IAM", description: "Identity Management" },
+    { id: "cloudformation", name: "CloudFormation", description: "Infrastructure as Code" },
+    { id: "archive", name: "Archive Storage", description: "Long-term Storage" },
+    { id: "cdn", name: "CDN", description: "Content Delivery Network" },
+    { id: "waf", name: "Web Firewall", description: "Web Application Firewall" },
+    { id: "ml", name: "Machine Learning", description: "ML Model Training" },
+    { id: "monitoring", name: "Monitoring", description: "Monitoring & Logging" },
+    { id: "backup", name: "Backup", description: "Backup Storage" }
   ];
 
   const handleProfileAction = (action: string) => {
@@ -48,7 +70,7 @@ const AWSHeader = () => {
           title: "Billing Dashboard",
           description: "Opening billing dashboard...",
         });
-        // In a real app, this would navigate to billing
+        if (onServiceSelect) onServiceSelect('billing');
         break;
       case 'support':
         toast({
@@ -67,7 +89,6 @@ const AWSHeader = () => {
           title: "Signed Out",
           description: "You have been successfully signed out.",
         });
-        // In a real app, this would handle logout
         break;
       default:
         break;
@@ -83,10 +104,45 @@ const AWSHeader = () => {
 
   const handleHelp = () => {
     toast({
-      title: "AWS Support",
-      description: "Opening AWS documentation and support resources...",
+      title: "Zeltra Support",
+      description: "Opening Zeltra documentation and support resources...",
     });
   };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      const matchedService = services.find(service => 
+        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        service.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      
+      if (matchedService && onServiceSelect) {
+        onServiceSelect(matchedService.id);
+        toast({
+          title: "Search Result",
+          description: `Opening ${matchedService.name} dashboard...`,
+        });
+      } else {
+        toast({
+          title: "No Results",
+          description: `No services found for "${searchQuery}"`,
+        });
+      }
+      setSearchQuery("");
+    }
+  };
+
+  const handleServiceClick = (serviceId: string) => {
+    if (onServiceSelect) {
+      onServiceSelect(serviceId);
+    }
+  };
+
+  const filteredServices = services.filter(service =>
+    service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    service.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3">
@@ -94,10 +150,10 @@ const AWSHeader = () => {
         {/* Left side - Logo and Services */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#FF9900] rounded flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AWS</span>
+            <div className="w-8 h-8 bg-[#2563eb] rounded flex items-center justify-center">
+              <span className="text-white font-bold text-xs">ZC</span>
             </div>
-            <span className="font-semibold text-gray-900">Management Console</span>
+            <span className="font-semibold text-gray-900">Zeltra Connect</span>
           </div>
           
           <DropdownMenu>
@@ -107,17 +163,30 @@ const AWSHeader = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
+            <DropdownMenuContent className="w-64 bg-white">
               <div className="p-2">
-                <Input placeholder="Search services..." className="mb-2" />
+                <Input 
+                  placeholder="Search services..." 
+                  className="mb-2"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
                 <div className="space-y-1">
-                  <DropdownMenuItem>
-                    <span className="font-medium">Recently used</span>
+                  <DropdownMenuItem className="font-medium text-gray-500">
+                    Recently used
                   </DropdownMenuItem>
-                  <DropdownMenuItem>EC2</DropdownMenuItem>
-                  <DropdownMenuItem>S3</DropdownMenuItem>
-                  <DropdownMenuItem>RDS</DropdownMenuItem>
-                  <DropdownMenuItem>Lambda</DropdownMenuItem>
+                  {(searchQuery ? filteredServices : services.slice(0, 8)).map((service) => (
+                    <DropdownMenuItem 
+                      key={service.id}
+                      onClick={() => handleServiceClick(service.id)}
+                      className="cursor-pointer hover:bg-gray-100"
+                    >
+                      <div>
+                        <div className="font-medium">{service.name}</div>
+                        <div className="text-xs text-gray-500">{service.description}</div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
                 </div>
               </div>
             </DropdownMenuContent>
@@ -126,13 +195,15 @@ const AWSHeader = () => {
 
         {/* Center - Search */}
         <div className="flex-1 max-w-xl mx-8">
-          <div className="relative">
+          <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
               placeholder="Search for services, features, blogs, docs, and more"
               className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </div>
+          </form>
         </div>
 
         {/* Right side - User and settings */}
@@ -146,7 +217,7 @@ const AWSHeader = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="bg-white">
               {regions.map((r) => (
                 <DropdownMenuItem key={r.id} onClick={() => setRegion(r.id)}>
                   <span className="mr-2">{r.flag}</span>
@@ -177,30 +248,30 @@ const AWSHeader = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="text-sm">
                 <User className="h-4 w-4 mr-1" />
-                demo-user
+                John Paul
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => handleProfileAction('account')}>
+            <DropdownMenuContent align="end" className="w-56 bg-white">
+              <DropdownMenuItem onClick={() => handleProfileAction('account')} className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 My Account
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleProfileAction('billing')}>
+              <DropdownMenuItem onClick={() => handleProfileAction('billing')} className="cursor-pointer">
                 <CreditCard className="mr-2 h-4 w-4" />
                 My Billing Dashboard
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleProfileAction('support')}>
+              <DropdownMenuItem onClick={() => handleProfileAction('support')} className="cursor-pointer">
                 <LifeBuoy className="mr-2 h-4 w-4" />
                 My Support Cases
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleProfileAction('switch-role')}>
+              <DropdownMenuItem onClick={() => handleProfileAction('switch-role')} className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" />
                 Switch Role
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleProfileAction('signout')}>
+              <DropdownMenuItem onClick={() => handleProfileAction('signout')} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -212,4 +283,4 @@ const AWSHeader = () => {
   );
 };
 
-export default AWSHeader;
+export default ZeltraHeader;

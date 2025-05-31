@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,16 +24,26 @@ import {
 } from "lucide-react";
 
 const EC2Dashboard = () => {
-  // Load instances from localStorage on component mount
+  // Initialize with default instances if none exist
   const [instances, setInstances] = useState(() => {
     const savedInstances = localStorage.getItem('ec2-instances');
-    return savedInstances ? JSON.parse(savedInstances) : [
+    if (savedInstances) {
+      try {
+        return JSON.parse(savedInstances);
+      } catch (error) {
+        console.error('Error parsing saved instances:', error);
+        // If parsing fails, return default instances
+      }
+    }
+    
+    // Default instances
+    const defaultInstances = [
       {
-        id: "i-0123456789abcdef0",
+        id: "vm-0123456789abcdef0",
         name: "Web Server 1",
         type: "t3.medium",
         state: "running",
-        az: "us-east-1a",
+        az: "eu-west-1a",
         publicIp: "54.123.45.67",
         privateIp: "10.0.1.100",
         launchTime: "2024-01-15 10:30 AM",
@@ -40,11 +51,11 @@ const EC2Dashboard = () => {
         securityGroup: "web-sg"
       },
       {
-        id: "i-0987654321fedcba0",
+        id: "vm-0987654321fedcba0",
         name: "Database Server",
         type: "t3.large",
         state: "stopped",
-        az: "us-east-1b",
+        az: "eu-west-1b",
         publicIp: "-",
         privateIp: "10.0.2.50",
         launchTime: "2024-01-14 02:15 PM",
@@ -52,11 +63,11 @@ const EC2Dashboard = () => {
         securityGroup: "db-sg"
       },
       {
-        id: "i-0246813579bdfeca0",
+        id: "vm-0246813579bdfeca0",
         name: "Load Balancer",
         type: "t3.small",
         state: "running",
-        az: "us-east-1c",
+        az: "eu-west-1c",
         publicIp: "34.123.45.89",
         privateIp: "10.0.3.25",
         launchTime: "2024-01-16 08:45 AM",
@@ -64,6 +75,10 @@ const EC2Dashboard = () => {
         securityGroup: "lb-sg"
       }
     ];
+    
+    // Save default instances to localStorage
+    localStorage.setItem('ec2-instances', JSON.stringify(defaultInstances));
+    return defaultInstances;
   });
 
   // Helper function to update instances and notify other components
@@ -92,17 +107,17 @@ const EC2Dashboard = () => {
   });
 
   const instanceTypes = [
-    { value: "t3.micro", label: "t3.micro (1 vCPU, 1 GiB RAM) - $0.0104/hour", specs: "1 vCPU, 1 GiB RAM", hourlyRate: 0.0104 },
-    { value: "t3.small", label: "t3.small (2 vCPUs, 2 GiB RAM) - $0.0208/hour", specs: "2 vCPUs, 2 GiB RAM", hourlyRate: 0.0208 },
-    { value: "t3.medium", label: "t3.medium (2 vCPUs, 4 GiB RAM) - $0.0416/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0416 },
-    { value: "t3.large", label: "t3.large (2 vCPUs, 8 GiB RAM) - $0.0832/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0832 },
-    { value: "m5.large", label: "m5.large (2 vCPUs, 8 GiB RAM) - $0.096/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.096 },
-    { value: "c5.large", label: "c5.large (2 vCPUs, 4 GiB RAM) - $0.085/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.085 },
+    { value: "t3.micro", label: "t3.micro (1 vCPU, 1 GiB RAM) - £0.0085/hour", specs: "1 vCPU, 1 GiB RAM", hourlyRate: 0.0085 },
+    { value: "t3.small", label: "t3.small (2 vCPUs, 2 GiB RAM) - £0.0171/hour", specs: "2 vCPUs, 2 GiB RAM", hourlyRate: 0.0171 },
+    { value: "t3.medium", label: "t3.medium (2 vCPUs, 4 GiB RAM) - £0.0341/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0341 },
+    { value: "t3.large", label: "t3.large (2 vCPUs, 8 GiB RAM) - £0.0682/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0682 },
+    { value: "m5.large", label: "m5.large (2 vCPUs, 8 GiB RAM) - £0.0787/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0787 },
+    { value: "c5.large", label: "c5.large (2 vCPUs, 4 GiB RAM) - £0.0697/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0697 },
   ];
 
   const amis = [
-    { value: "ami-0abcdef1234567890", label: "Amazon Linux 2023 AMI", description: "Amazon Linux 2023 AMI 2023.2.20231113.0 x86_64 HVM kernel-6.1" },
-    { value: "ami-0987654321098765a", label: "Ubuntu Server 22.04 LTS", description: "Ubuntu Server 22.04 LTS (HVM), SSD Volume Type" },
+    { value: "ami-0abcdef1234567890", label: "Ubuntu Server 22.04 LTS", description: "Ubuntu Server 22.04 LTS (HVM), SSD Volume Type" },
+    { value: "ami-0987654321098765a", label: "Amazon Linux 2023 AMI", description: "Amazon Linux 2023 AMI 2023.2.20231113.0 x86_64 HVM kernel-6.1" },
     { value: "ami-0123456789abcdef1", label: "Windows Server 2022", description: "Microsoft Windows Server 2022 Base" },
     { value: "ami-0fedcba987654321b", label: "Red Hat Enterprise Linux 9", description: "Red Hat Enterprise Linux 9 (HVM), SSD Volume Type" },
   ];
@@ -110,23 +125,23 @@ const EC2Dashboard = () => {
   const getInstanceCost = (type: string, state: string) => {
     if (state !== "running") return 0;
     const hourlyRates: { [key: string]: number } = {
-      "t3.micro": 0.0104,
-      "t3.small": 0.0208,
-      "t3.medium": 0.0416,
-      "t3.large": 0.0832,
-      "m5.large": 0.096,
-      "c5.large": 0.085
+      "t3.micro": 0.0085,
+      "t3.small": 0.0171,
+      "t3.medium": 0.0341,
+      "t3.large": 0.0682,
+      "m5.large": 0.0787,
+      "c5.large": 0.0697
     };
-    return (hourlyRates[type] || 0.05) * 24 * 30; // Monthly cost
+    return (hourlyRates[type] || 0.041) * 24 * 30; // Monthly cost in GBP
   };
 
   const handleLaunchInstance = () => {
     const newInstanceData = {
-      id: `i-${Math.random().toString(36).substr(2, 17)}`,
+      id: `vm-${Math.random().toString(36).substr(2, 17)}`,
       name: newInstance.name || "Unnamed Instance",
       type: newInstance.instanceType,
       state: "pending",
-      az: "us-east-1a",
+      az: "eu-west-1a",
       publicIp: "-",
       privateIp: `10.0.1.${Math.floor(Math.random() * 255)}`,
       launchTime: new Date().toLocaleString(),
@@ -204,21 +219,21 @@ const EC2Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">EC2 Dashboard</h1>
-          <p className="text-gray-600 text-sm sm:text-base">Amazon Elastic Compute Cloud</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Virtual Machines Dashboard</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Zeltra Connect Virtual Machines</p>
         </div>
         <Dialog open={showLaunchDialog} onOpenChange={setShowLaunchDialog}>
           <DialogTrigger asChild>
-            <Button className="bg-[#FF9900] hover:bg-[#e8890a]">
+            <Button className="bg-[#2563eb] hover:bg-[#1d4ed8]">
               <Plus className="h-4 w-4 mr-2" />
               Launch Instance
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Launch an Instance</DialogTitle>
+              <DialogTitle>Launch a VM Instance</DialogTitle>
               <DialogDescription>
-                Configure your new EC2 instance with the options below
+                Configure your new virtual machine with the options below
               </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="basics" className="w-full">
@@ -241,7 +256,7 @@ const EC2Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ami">Amazon Machine Image (AMI)</Label>
+                    <Label htmlFor="ami">Machine Image (AMI)</Label>
                     <Select onValueChange={(value) => setNewInstance({...newInstance, ami: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an AMI" />
@@ -378,7 +393,7 @@ const EC2Dashboard = () => {
               </Button>
               <Button 
                 onClick={handleLaunchInstance}
-                className="bg-[#FF9900] hover:bg-[#e8890a]"
+                className="bg-[#2563eb] hover:bg-[#1d4ed8]"
                 disabled={!newInstance.ami || !newInstance.instanceType}
               >
                 Launch Instance
@@ -393,7 +408,7 @@ const EC2Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Instances</CardTitle>
-            <Server className="h-4 w-4 text-[#FF9900]" />
+            <Server className="h-4 w-4 text-[#2563eb]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalInstances}</div>
@@ -429,7 +444,7 @@ const EC2Dashboard = () => {
             <DollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalMonthlyCost.toFixed(2)}</div>
+            <div className="text-2xl font-bold">£{totalMonthlyCost.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Running instances</p>
           </CardContent>
         </Card>
@@ -440,7 +455,7 @@ const EC2Dashboard = () => {
             <Monitor className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${runningInstances > 0 ? (totalMonthlyCost / runningInstances).toFixed(2) : '0.00'}</div>
+            <div className="text-2xl font-bold">£{runningInstances > 0 ? (totalMonthlyCost / runningInstances).toFixed(2) : '0.00'}</div>
             <p className="text-xs text-muted-foreground">Per month</p>
           </CardContent>
         </Card>
@@ -450,7 +465,7 @@ const EC2Dashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">Instances ({totalInstances})</CardTitle>
-          <CardDescription>Manage your EC2 instances and view costs</CardDescription>
+          <CardDescription>Manage your virtual machines and view costs</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <div className="min-w-[1000px]">
@@ -485,7 +500,7 @@ const EC2Dashboard = () => {
                     <TableCell className="font-mono text-xs sm:text-sm">{instance.privateIp}</TableCell>
                     <TableCell className="font-medium">
                       <span className={instance.state === "running" ? "text-green-600" : "text-gray-400"}>
-                        ${getInstanceCost(instance.type, instance.state).toFixed(2)}
+                        £{getInstanceCost(instance.type, instance.state).toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell className="text-xs sm:text-sm">{instance.launchTime}</TableCell>
