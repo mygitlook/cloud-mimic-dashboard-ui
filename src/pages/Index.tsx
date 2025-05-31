@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,8 @@ import {
   Archive,
   Cpu,
   Eye,
-  Save
+  Save,
+  LifeBuoy
 } from "lucide-react";
 import ZeltraHeader from "@/components/AWSHeader";
 import EC2Dashboard from "@/components/EC2Dashboard";
@@ -35,6 +35,14 @@ import CloudFormationDashboard from "@/components/CloudFormationDashboard";
 import DeploymentGuide from "@/components/DeploymentGuide";
 import VPCDashboard from "@/components/VPCDashboard";
 import ElasticLoadBalancerDashboard from "@/components/ElasticLoadBalancerDashboard";
+import ArchiveStorageDashboard from "@/components/ArchiveStorageDashboard";
+import CDNDashboard from "@/components/CDNDashboard";
+import WAFDashboard from "@/components/WAFDashboard";
+import MachineLearningDashboard from "@/components/MachineLearningDashboard";
+import PremiumSupportDashboard from "@/components/PremiumSupportDashboard";
+import DataTransferDashboard from "@/components/DataTransferDashboard";
+import BackupStorageDashboard from "@/components/BackupStorageDashboard";
+import MonitoringDashboard from "@/components/MonitoringDashboard";
 
 const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
@@ -53,12 +61,13 @@ const Index = () => {
         const cost = instances.reduce((total: number, instance: any) => {
           if (instance.state === "running") {
             const hourlyRates: { [key: string]: number } = {
-              "t3.micro": 0.0104 * 0.82, // Convert to GBP
-              "t3.small": 0.0208 * 0.82,
-              "t3.medium": 0.0416 * 0.82,
-              "t3.large": 0.0832 * 0.82,
-              "m5.large": 0.096 * 0.82,
-              "c5.large": 0.085 * 0.82
+              "t3.micro": 0.0085,
+              "t3.small": 0.017,
+              "t3.medium": 0.034,
+              "t3.large": 0.068,
+              "m5.large": 0.079,
+              "c5.large": 0.070,
+              "virtual-pc": 2.92 // £70.10 per month / 24 hours / 30 days
             };
             return total + (hourlyRates[instance.type] || 0.041) * 24 * 30; // Monthly cost in GBP
           }
@@ -102,7 +111,9 @@ const Index = () => {
     { id: "waf", name: "Web Firewall", icon: Shield, description: "Web Application Firewall", status: "active", instances: 41, cost: 3280.00 },
     { id: "ml", name: "Machine Learning", icon: Cpu, description: "ML Model Training", status: "active", models: 4, cost: 10000.00 },
     { id: "monitoring", name: "Monitoring", icon: Eye, description: "Monitoring & Logging", status: "active", instances: 39, cost: 1567.74 },
-    { id: "backup", name: "Backup", icon: Save, description: "Backup Storage", status: "active", backups: 45, cost: 360.00 }
+    { id: "backup", name: "Backup", icon: Save, description: "Backup Storage", status: "active", backups: 45, cost: 360.00 },
+    { id: "support", name: "Premium Support", icon: LifeBuoy, description: "24/7 Expert Support", status: "active", plans: 2, cost: 7000.00 },
+    { id: "data-transfer", name: "Data Transfer", icon: Network, description: "Outbound Data Transfer", status: "active", transfers: 16, cost: 0.96 }
   ];
 
   const recentActivity = [
@@ -138,6 +149,7 @@ const Index = () => {
                 {service.transfers && service.transfers}
                 {service.models && service.models}
                 {service.backups && service.backups}
+                {service.plans && service.plans}
               </div>
               <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
               <div className="flex items-center justify-between mt-2">
@@ -401,6 +413,14 @@ const Index = () => {
                   <Globe className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   CDN
                 </Button>
+                <Button
+                  variant={activeService === "data-transfer" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("data-transfer")}
+                >
+                  <Network className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Data Transfer
+                </Button>
               </div>
 
               <div className="pt-2 lg:pt-4">
@@ -453,6 +473,14 @@ const Index = () => {
                   <Eye className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
                   Monitoring
                 </Button>
+                <Button
+                  variant={activeService === "support" ? "secondary" : "ghost"}
+                  className="w-full justify-start text-xs lg:text-sm"
+                  onClick={() => setActiveService("support")}
+                >
+                  <LifeBuoy className="h-3 w-3 lg:h-4 lg:w-4 mr-2" />
+                  Premium Support
+                </Button>
               </div>
 
               <div className="pt-2 lg:pt-4">
@@ -485,43 +513,14 @@ const Index = () => {
           {activeService === "vpc" && <VPCDashboard />}
           {activeService === "elb" && <ElasticLoadBalancerDashboard />}
           {activeService === "deployment" && <DeploymentGuide />}
-          {(activeService === "archive" || activeService === "cdn" || activeService === "waf" || activeService === "ml" || activeService === "monitoring" || activeService === "backup") && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold">
-                  {activeService === "archive" && "Archive Storage"}
-                  {activeService === "cdn" && "Content Delivery Network"}
-                  {activeService === "waf" && "Web Application Firewall"}
-                  {activeService === "ml" && "Machine Learning"}
-                  {activeService === "monitoring" && "Monitoring & Logging"}
-                  {activeService === "backup" && "Backup Storage"}
-                </h1>
-                <p className="text-gray-600">
-                  {activeService === "archive" && "Long-term data archival with 99.999999999% durability"}
-                  {activeService === "cdn" && "Global content delivery with low latency"}
-                  {activeService === "waf" && "Protect your web applications from common web exploits"}
-                  {activeService === "ml" && "Train and deploy machine learning models at scale"}
-                  {activeService === "monitoring" && "Monitor your infrastructure and applications"}
-                  {activeService === "backup" && "Automated backup and disaster recovery"}
-                </p>
-              </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Service Dashboard</CardTitle>
-                  <CardDescription>Coming soon - Full dashboard for this service</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <div className="text-4xl mb-4">🚧</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Dashboard Under Development</h3>
-                    <p className="text-gray-600">
-                      The full dashboard for this service is being developed. Please check back soon!
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {activeService === "archive" && <ArchiveStorageDashboard />}
+          {activeService === "cdn" && <CDNDashboard />}
+          {activeService === "waf" && <WAFDashboard />}
+          {activeService === "ml" && <MachineLearningDashboard />}
+          {activeService === "support" && <PremiumSupportDashboard />}
+          {activeService === "data-transfer" && <DataTransferDashboard />}
+          {activeService === "backup" && <BackupStorageDashboard />}
+          {activeService === "monitoring" && <MonitoringDashboard />}
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,394 +7,277 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Server, 
-  Plus, 
   Play, 
   Square, 
   RotateCcw, 
-  Trash2,
-  Monitor,
-  HardDrive,
-  Cpu,
+  Trash2, 
+  Plus,
+  DollarSign,
   Activity,
-  DollarSign
+  Zap
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Instance {
+  id: string;
+  name: string;
+  type: string;
+  state: "running" | "stopped";
+  publicIP: string;
+  privateIP: string;
+  launchTime: string;
+  ami: string;
+}
 
 const EC2Dashboard = () => {
-  // Initialize with default instances if none exist
-  const [instances, setInstances] = useState(() => {
-    const savedInstances = localStorage.getItem('ec2-instances');
-    if (savedInstances) {
-      try {
-        return JSON.parse(savedInstances);
-      } catch (error) {
-        console.error('Error parsing saved instances:', error);
-        // If parsing fails, return default instances
-      }
-    }
-    
-    // Default instances
-    const defaultInstances = [
-      {
-        id: "vm-0123456789abcdef0",
-        name: "Web Server 1",
-        type: "t3.medium",
-        state: "running",
-        az: "eu-west-1a",
-        publicIp: "54.123.45.67",
-        privateIp: "10.0.1.100",
-        launchTime: "2024-01-15 10:30 AM",
-        keyPair: "my-key-pair",
-        securityGroup: "web-sg"
-      },
-      {
-        id: "vm-0987654321fedcba0",
-        name: "Database Server",
-        type: "t3.large",
-        state: "stopped",
-        az: "eu-west-1b",
-        publicIp: "-",
-        privateIp: "10.0.2.50",
-        launchTime: "2024-01-14 02:15 PM",
-        keyPair: "db-key-pair",
-        securityGroup: "db-sg"
-      },
-      {
-        id: "vm-0246813579bdfeca0",
-        name: "Load Balancer",
-        type: "t3.small",
-        state: "running",
-        az: "eu-west-1c",
-        publicIp: "34.123.45.89",
-        privateIp: "10.0.3.25",
-        launchTime: "2024-01-16 08:45 AM",
-        keyPair: "lb-key-pair",
-        securityGroup: "lb-sg"
-      }
-    ];
-    
-    // Save default instances to localStorage
-    localStorage.setItem('ec2-instances', JSON.stringify(defaultInstances));
-    return defaultInstances;
-  });
-
-  // Helper function to update instances and notify other components
-  const updateInstances = (newInstances: typeof instances) => {
-    setInstances(newInstances);
-    localStorage.setItem('ec2-instances', JSON.stringify(newInstances));
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
-  };
-
-  // Save instances to localStorage whenever instances change
-  useEffect(() => {
-    localStorage.setItem('ec2-instances', JSON.stringify(instances));
-    // Dispatch event to update dashboard
-    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
-  }, [instances]);
-
-  const [showLaunchDialog, setShowLaunchDialog] = useState(false);
-  const [newInstance, setNewInstance] = useState({
-    name: "",
-    ami: "",
-    instanceType: "",
-    keyPair: "",
-    securityGroup: "",
-    subnet: ""
-  });
+  const [instances, setInstances] = useState<Instance[]>([]);
+  const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
+  const [newInstanceName, setNewInstanceName] = useState("");
+  const [selectedInstanceType, setSelectedInstanceType] = useState("");
+  const [selectedAMI, setSelectedAMI] = useState("");
+  const { toast } = useToast();
 
   const instanceTypes = [
-    { value: "t3.micro", label: "t3.micro (1 vCPU, 1 GiB RAM) - £0.0085/hour", specs: "1 vCPU, 1 GiB RAM", hourlyRate: 0.0085 },
-    { value: "t3.small", label: "t3.small (2 vCPUs, 2 GiB RAM) - £0.0171/hour", specs: "2 vCPUs, 2 GiB RAM", hourlyRate: 0.0171 },
-    { value: "t3.medium", label: "t3.medium (2 vCPUs, 4 GiB RAM) - £0.0341/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0341 },
-    { value: "t3.large", label: "t3.large (2 vCPUs, 8 GiB RAM) - £0.0682/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0682 },
-    { value: "m5.large", label: "m5.large (2 vCPUs, 8 GiB RAM) - £0.0787/hour", specs: "2 vCPUs, 8 GiB RAM", hourlyRate: 0.0787 },
-    { value: "c5.large", label: "c5.large (2 vCPUs, 4 GiB RAM) - £0.0697/hour", specs: "2 vCPUs, 4 GiB RAM", hourlyRate: 0.0697 },
+    { id: "t3.micro", name: "t3.micro", specs: "1 vCPU, 1 GB RAM", hourlyRate: 0.0085 },
+    { id: "t3.small", name: "t3.small", specs: "1 vCPU, 2 GB RAM", hourlyRate: 0.017 },
+    { id: "t3.medium", name: "t3.medium", specs: "2 vCPUs, 4 GB RAM", hourlyRate: 0.034 },
+    { id: "t3.large", name: "t3.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.068 },
+    { id: "m5.large", name: "m5.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.079 },
+    { id: "c5.large", name: "c5.large", specs: "2 vCPUs, 4 GB RAM", hourlyRate: 0.070 },
+    { id: "virtual-pc", name: "Virtual PC", specs: "4 vCPUs, 16 GB RAM", hourlyRate: 2.92 } // £70.10 per month / 24 hours / 30 days
   ];
 
   const amis = [
-    { value: "ami-0abcdef1234567890", label: "Ubuntu Server 22.04 LTS", description: "Ubuntu Server 22.04 LTS (HVM), SSD Volume Type" },
-    { value: "ami-0987654321098765a", label: "Amazon Linux 2023 AMI", description: "Amazon Linux 2023 AMI 2023.2.20231113.0 x86_64 HVM kernel-6.1" },
-    { value: "ami-0123456789abcdef1", label: "Windows Server 2022", description: "Microsoft Windows Server 2022 Base" },
-    { value: "ami-0fedcba987654321b", label: "Red Hat Enterprise Linux 9", description: "Red Hat Enterprise Linux 9 (HVM), SSD Volume Type" },
+    { id: "ami-12345", name: "Ubuntu Server 22.04 LTS", description: "64-bit (x86)" },
+    { id: "ami-67890", name: "Amazon Linux 2023", description: "64-bit (x86)" },
+    { id: "ami-11111", name: "Windows Server 2022", description: "64-bit (x86)" },
+    { id: "ami-22222", name: "Red Hat Enterprise Linux 9", description: "64-bit (x86)" },
+    { id: "ami-33333", name: "SUSE Linux Enterprise Server 15", description: "64-bit (x86)" }
   ];
 
-  const getInstanceCost = (type: string, state: string) => {
-    if (state !== "running") return 0;
-    const hourlyRates: { [key: string]: number } = {
-      "t3.micro": 0.0085,
-      "t3.small": 0.0171,
-      "t3.medium": 0.0341,
-      "t3.large": 0.0682,
-      "m5.large": 0.0787,
-      "c5.large": 0.0697
-    };
-    return (hourlyRates[type] || 0.041) * 24 * 30; // Monthly cost in GBP
+  useEffect(() => {
+    loadInstances();
+  }, []);
+
+  const loadInstances = () => {
+    const savedInstances = localStorage.getItem('ec2-instances');
+    if (savedInstances) {
+      setInstances(JSON.parse(savedInstances));
+    } else {
+      // Default instances
+      const defaultInstances: Instance[] = [
+        {
+          id: "i-1234567890abcdef0",
+          name: "web-server-01",
+          type: "t3.medium",
+          state: "running",
+          publicIP: "54.123.45.67",
+          privateIP: "10.0.1.10",
+          launchTime: "2024-01-15T10:30:00Z",
+          ami: "ami-12345"
+        },
+        {
+          id: "i-0987654321fedcba0",
+          name: "database-server",
+          type: "m5.large",
+          state: "stopped",
+          publicIP: "-",
+          privateIP: "10.0.1.20",
+          launchTime: "2024-01-10T14:20:00Z",
+          ami: "ami-67890"
+        },
+        {
+          id: "i-abcdef1234567890",
+          name: "load-balancer",
+          type: "c5.large",
+          state: "running",
+          publicIP: "52.87.123.45",
+          privateIP: "10.0.1.30",
+          launchTime: "2024-01-12T09:15:00Z",
+          ami: "ami-11111"
+        }
+      ];
+      setInstances(defaultInstances);
+      saveInstances(defaultInstances);
+    }
   };
 
-  const handleLaunchInstance = () => {
-    const newInstanceData = {
-      id: `vm-${Math.random().toString(36).substr(2, 17)}`,
-      name: newInstance.name || "Unnamed Instance",
-      type: newInstance.instanceType,
-      state: "pending",
-      az: "eu-west-1a",
-      publicIp: "-",
-      privateIp: `10.0.1.${Math.floor(Math.random() * 255)}`,
-      launchTime: new Date().toLocaleString(),
-      keyPair: newInstance.keyPair,
-      securityGroup: newInstance.securityGroup
+  const saveInstances = (instanceList: Instance[]) => {
+    localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
+    // Dispatch custom event to update dashboard stats
+    window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+  };
+
+  const calculateMonthlyCost = (type: string, state: string) => {
+    if (state !== "running") return 0;
+    const instanceType = instanceTypes.find(t => t.id === type);
+    return instanceType ? instanceType.hourlyRate * 24 * 30 : 0;
+  };
+
+  const launchInstance = () => {
+    if (!newInstanceName || !selectedInstanceType || !selectedAMI) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newInstance: Instance = {
+      id: `i-${Math.random().toString(36).substr(2, 9)}${Math.random().toString(36).substr(2, 8)}`,
+      name: newInstanceName,
+      type: selectedInstanceType,
+      state: "running",
+      publicIP: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+      privateIP: `10.0.1.${Math.floor(Math.random() * 255)}`,
+      launchTime: new Date().toISOString(),
+      ami: selectedAMI
     };
 
-    updateInstances([...instances, newInstanceData]);
-    setShowLaunchDialog(false);
-    setNewInstance({
-      name: "",
-      ami: "",
-      instanceType: "",
-      keyPair: "",
-      securityGroup: "",
-      subnet: ""
+    const updatedInstances = [...instances, newInstance];
+    setInstances(updatedInstances);
+    saveInstances(updatedInstances);
+
+    toast({
+      title: "Instance Launched",
+      description: `${newInstanceName} has been launched successfully`,
     });
 
-    // Simulate instance starting up
-    setTimeout(() => {
-      updateInstances(prev => prev.map(instance => 
-        instance.id === newInstanceData.id 
-          ? { ...instance, state: "running", publicIp: `54.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` }
-          : instance
-      ));
-    }, 3000);
+    setIsLaunchDialogOpen(false);
+    setNewInstanceName("");
+    setSelectedInstanceType("");
+    setSelectedAMI("");
   };
 
-  const handleInstanceAction = (instanceId: string, action: 'start' | 'stop' | 'reboot' | 'terminate') => {
-    updateInstances(prev => prev.map(instance => {
-      if (instance.id === instanceId) {
-        switch (action) {
-          case 'start':
-            return { ...instance, state: 'running', publicIp: `54.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` };
-          case 'stop':
-            return { ...instance, state: 'stopped', publicIp: '-' };
-          case 'reboot':
-            return { ...instance, state: 'rebooting' };
-          case 'terminate':
-            return null; // Will be filtered out
-          default:
-            return instance;
-        }
-      }
-      return instance;
-    }).filter(Boolean) as typeof instances);
-
-    // Simulate state changes
-    if (action === 'reboot') {
-      setTimeout(() => {
-        updateInstances(prev => prev.map(instance => 
-          instance.id === instanceId ? { ...instance, state: 'running' } : instance
-        ));
-      }, 2000);
-    }
+  const startInstance = (id: string) => {
+    const updatedInstances = instances.map(instance =>
+      instance.id === id ? { ...instance, state: "running" as const } : instance
+    );
+    setInstances(updatedInstances);
+    saveInstances(updatedInstances);
+    
+    const instance = instances.find(i => i.id === id);
+    toast({
+      title: "Instance Started",
+      description: `${instance?.name} is now running`,
+    });
   };
 
-  const getStateColor = (state: string) => {
-    switch (state) {
-      case "running": return "bg-green-100 text-green-800";
-      case "stopped": return "bg-red-100 text-red-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "stopping": return "bg-orange-100 text-orange-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
+  const stopInstance = (id: string) => {
+    const updatedInstances = instances.map(instance =>
+      instance.id === id ? { ...instance, state: "stopped" as const } : instance
+    );
+    setInstances(updatedInstances);
+    saveInstances(updatedInstances);
+    
+    const instance = instances.find(i => i.id === id);
+    toast({
+      title: "Instance Stopped",
+      description: `${instance?.name} has been stopped`,
+    });
+  };
+
+  const rebootInstance = (id: string) => {
+    const instance = instances.find(i => i.id === id);
+    toast({
+      title: "Instance Rebooting",
+      description: `${instance?.name} is being rebooted`,
+    });
+  };
+
+  const terminateInstance = (id: string) => {
+    const instance = instances.find(i => i.id === id);
+    const updatedInstances = instances.filter(i => i.id !== id);
+    setInstances(updatedInstances);
+    saveInstances(updatedInstances);
+    
+    toast({
+      title: "Instance Terminated",
+      description: `${instance?.name} has been terminated`,
+      variant: "destructive",
+    });
   };
 
   const runningInstances = instances.filter(i => i.state === "running").length;
   const stoppedInstances = instances.filter(i => i.state === "stopped").length;
-  const totalInstances = instances.length;
-  const totalMonthlyCost = instances.reduce((total, instance) => total + getInstanceCost(instance.type, instance.state), 0);
+  const totalMonthlyCost = instances.reduce((sum, instance) => 
+    sum + calculateMonthlyCost(instance.type, instance.state), 0
+  );
 
   return (
-    <div className="space-y-4 p-4 max-w-full overflow-x-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Virtual Machines Dashboard</h1>
-          <p className="text-gray-600 text-sm sm:text-base">Zeltra Connect Virtual Machines</p>
+          <h1 className="text-2xl font-bold">Virtual Machines (EC2)</h1>
+          <p className="text-gray-600">Launch and manage virtual server instances</p>
         </div>
-        <Dialog open={showLaunchDialog} onOpenChange={setShowLaunchDialog}>
+        <Dialog open={isLaunchDialogOpen} onOpenChange={setIsLaunchDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#2563eb] hover:bg-[#1d4ed8]">
+            <Button className="bg-[#2563eb] hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Launch Instance
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Launch a VM Instance</DialogTitle>
+              <DialogTitle>Launch New Instance</DialogTitle>
               <DialogDescription>
-                Configure your new virtual machine with the options below
+                Configure your new virtual machine instance
               </DialogDescription>
             </DialogHeader>
-            <Tabs defaultValue="basics" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="basics">Basics</TabsTrigger>
-                <TabsTrigger value="instance">Instance Type</TabsTrigger>
-                <TabsTrigger value="network">Network</TabsTrigger>
-                <TabsTrigger value="storage">Storage</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="basics" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      placeholder="Enter instance name"
-                      value={newInstance.name}
-                      onChange={(e) => setNewInstance({...newInstance, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ami">Machine Image (AMI)</Label>
-                    <Select onValueChange={(value) => setNewInstance({...newInstance, ami: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an AMI" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {amis.map((ami) => (
-                          <SelectItem key={ami.value} value={ami.value}>
-                            <div>
-                              <div className="font-medium">{ami.label}</div>
-                              <div className="text-xs text-gray-500">{ami.description}</div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="instance" className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="instanceType">Instance Type</Label>
-                  <Select onValueChange={(value) => setNewInstance({...newInstance, instanceType: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select instance type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {instanceTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          <div>
-                            <div className="font-medium">{type.value}</div>
-                            <div className="text-xs text-gray-500">{type.specs}</div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="instance-name">Instance Name</Label>
+                <Input
+                  id="instance-name"
+                  value={newInstanceName}
+                  onChange={(e) => setNewInstanceName(e.target.value)}
+                  placeholder="Enter instance name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="instance-type">Instance Type</Label>
+                <Select value={selectedInstanceType} onValueChange={setSelectedInstanceType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select instance type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instanceTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        <div>
+                          <div className="font-medium">{type.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {type.specs} - £{type.hourlyRate.toFixed(4)}/hour
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center">
-                        <Cpu className="h-4 w-4 mr-2" />
-                        vCPUs
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">2</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center">
-                        <HardDrive className="h-4 w-4 mr-2" />
-                        Memory
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">4 GiB</div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="network" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="keyPair">Key Pair</Label>
-                    <Select onValueChange={(value) => setNewInstance({...newInstance, keyPair: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select key pair" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="my-key-pair">my-key-pair</SelectItem>
-                        <SelectItem value="prod-key-pair">prod-key-pair</SelectItem>
-                        <SelectItem value="dev-key-pair">dev-key-pair</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="securityGroup">Security Group</Label>
-                    <Select onValueChange={(value) => setNewInstance({...newInstance, securityGroup: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select security group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">default</SelectItem>
-                        <SelectItem value="web-sg">web-sg</SelectItem>
-                        <SelectItem value="db-sg">db-sg</SelectItem>
-                        <SelectItem value="ssh-sg">ssh-sg</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="storage" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Root Volume</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Volume Type</Label>
-                        <Select defaultValue="gp3">
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="gp3">General Purpose SSD (gp3)</SelectItem>
-                            <SelectItem value="gp2">General Purpose SSD (gp2)</SelectItem>
-                            <SelectItem value="io1">Provisioned IOPS SSD (io1)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Size (GiB)</Label>
-                        <Input defaultValue="8" type="number" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>IOPS</Label>
-                        <Input defaultValue="3000" type="number" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-            
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setShowLaunchDialog(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleLaunchInstance}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8]"
-                disabled={!newInstance.ami || !newInstance.instanceType}
-              >
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="ami">Amazon Machine Image (AMI)</Label>
+                <Select value={selectedAMI} onValueChange={setSelectedAMI}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select AMI" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {amis.map((ami) => (
+                      <SelectItem key={ami.id} value={ami.id}>
+                        <div>
+                          <div className="font-medium">{ami.name}</div>
+                          <div className="text-xs text-gray-500">{ami.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={launchInstance} className="w-full">
                 Launch Instance
               </Button>
             </div>
@@ -403,16 +285,18 @@ const EC2Dashboard = () => {
         </Dialog>
       </div>
 
-      {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Instances</CardTitle>
             <Server className="h-4 w-4 text-[#2563eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalInstances}</div>
-            <p className="text-xs text-muted-foreground">All states</p>
+            <div className="text-2xl font-bold">{instances.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {runningInstances} running, {stoppedInstances} stopped
+            </p>
           </CardContent>
         </Card>
 
@@ -423,7 +307,7 @@ const EC2Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{runningInstances}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
+            <p className="text-xs text-muted-foreground">Active instances</p>
           </CardContent>
         </Card>
 
@@ -434,29 +318,18 @@ const EC2Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stoppedInstances}</div>
-            <p className="text-xs text-muted-foreground">Not running</p>
+            <p className="text-xs text-muted-foreground">Inactive instances</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Monthly Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-500" />
+            <DollarSign className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">£{totalMonthlyCost.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Running instances</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Cost/Instance</CardTitle>
-            <Monitor className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">£{runningInstances > 0 ? (totalMonthlyCost / runningInstances).toFixed(2) : '0.00'}</div>
-            <p className="text-xs text-muted-foreground">Per month</p>
+            <p className="text-xs text-muted-foreground">Estimated cost</p>
           </CardContent>
         </Card>
       </div>
@@ -464,87 +337,76 @@ const EC2Dashboard = () => {
       {/* Instances Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Instances ({totalInstances})</CardTitle>
-          <CardDescription>Manage your virtual machines and view costs</CardDescription>
+          <CardTitle>Instance Overview</CardTitle>
+          <CardDescription>Manage your virtual machine instances</CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <div className="min-w-[1000px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Instance ID</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>AZ</TableHead>
-                  <TableHead>Public IP</TableHead>
-                  <TableHead>Private IP</TableHead>
-                  <TableHead>Monthly Cost</TableHead>
-                  <TableHead>Launch Time</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {instances.map((instance) => (
-                  <TableRow key={instance.id}>
-                    <TableCell className="font-medium">{instance.name}</TableCell>
-                    <TableCell className="font-mono text-xs sm:text-sm">{instance.id}</TableCell>
-                    <TableCell>{instance.type}</TableCell>
-                    <TableCell>
-                      <Badge className={getStateColor(instance.state)}>
-                        {instance.state}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{instance.az}</TableCell>
-                    <TableCell className="font-mono text-xs sm:text-sm">{instance.publicIp}</TableCell>
-                    <TableCell className="font-mono text-xs sm:text-sm">{instance.privateIp}</TableCell>
-                    <TableCell className="font-medium">
-                      <span className={instance.state === "running" ? "text-green-600" : "text-gray-400"}>
-                        £{getInstanceCost(instance.type, instance.state).toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs sm:text-sm">{instance.launchTime}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-1">
-                        <Button 
-                          size="sm" 
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Instance ID</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Public IP</TableHead>
+                <TableHead>Private IP</TableHead>
+                <TableHead>Monthly Cost</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {instances.map((instance) => (
+                <TableRow key={instance.id}>
+                  <TableCell className="font-medium">{instance.name}</TableCell>
+                  <TableCell>{instance.id}</TableCell>
+                  <TableCell>{instance.type}</TableCell>
+                  <TableCell>
+                    <Badge variant={instance.state === "running" ? "default" : "secondary"}>
+                      {instance.state}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{instance.publicIP}</TableCell>
+                  <TableCell>{instance.privateIP}</TableCell>
+                  <TableCell>£{calculateMonthlyCost(instance.type, instance.state).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      {instance.state === "stopped" ? (
+                        <Button
+                          size="sm"
                           variant="outline"
-                          onClick={() => handleInstanceAction(instance.id, 'start')}
-                          disabled={instance.state === 'running'}
+                          onClick={() => startInstance(instance.id)}
                         >
                           <Play className="h-3 w-3" />
                         </Button>
-                        <Button 
-                          size="sm" 
+                      ) : (
+                        <Button
+                          size="sm"
                           variant="outline"
-                          onClick={() => handleInstanceAction(instance.id, 'stop')}
-                          disabled={instance.state === 'stopped'}
+                          onClick={() => stopInstance(instance.id)}
                         >
                           <Square className="h-3 w-3" />
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleInstanceAction(instance.id, 'reboot')}
-                          disabled={instance.state !== 'running'}
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600"
-                          onClick={() => handleInstanceAction(instance.id, 'terminate')}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => rebootInstance(instance.id)}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => terminateInstance(instance.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

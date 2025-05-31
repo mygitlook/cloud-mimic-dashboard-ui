@@ -1,9 +1,9 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -11,10 +11,15 @@ import {
   Calendar,
   CreditCard,
   AlertTriangle,
-  BarChart3
+  BarChart3,
+  Download,
+  FileText
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const BillingDashboard = () => {
+  const { toast } = useToast();
+  
   const currentMonthCost = 25277.00;
   const lastMonthCost = 18942.00;
   const forecastedCost = 31245.00;
@@ -82,6 +87,63 @@ const BillingDashboard = () => {
       date: "2024-01-26"
     }
   ];
+
+  const handleDownloadBill = (billMonth: string, amount: number) => {
+    // Generate a simple text-based bill content
+    const billContent = `
+ZELTRA CONNECT - INVOICE
+
+Bill Period: ${billMonth}
+Invoice Date: ${new Date().toLocaleDateString()}
+Amount: £${amount.toLocaleString()}
+
+Service Breakdown:
+- Machine Learning: £10,000.00
+- Premium Support: £7,000.00
+- Web Application Firewall: £3,280.00
+- Virtual Machines: £2,592.90
+- Monitoring & Logging: £1,567.74
+- Backup Storage: £360.00
+- Content Delivery Network: £255.00
+- Object Storage: £130.00
+- Archive Storage: £90.40
+- Data Transfer: £0.96
+
+Total: £${amount.toLocaleString()}
+
+Thank you for using Zeltra Connect services.
+    `;
+
+    // Create and download the file
+    const blob = new Blob([billContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zeltra-connect-bill-${billMonth.replace(' ', '-').toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Bill Downloaded",
+      description: `Bill for ${billMonth} has been downloaded successfully`,
+    });
+  };
+
+  const handleViewBill = (billMonth: string) => {
+    toast({
+      title: "Bill Viewer",
+      description: `Opening detailed view for ${billMonth}`,
+    });
+  };
+
+  const handlePayNow = (billMonth: string, amount: number) => {
+    toast({
+      title: "Payment Processing",
+      description: `Processing payment of £${amount.toLocaleString()} for ${billMonth}`,
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -301,10 +363,31 @@ const BillingDashboard = () => {
                       <TableCell>{bill.dueDate}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800 text-sm">View</button>
-                          <button className="text-blue-600 hover:text-blue-800 text-sm">Download</button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleViewBill(bill.month)}
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDownloadBill(bill.month, bill.amount)}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            Download
+                          </Button>
                           {bill.status === "current" && (
-                            <button className="text-green-600 hover:text-green-800 text-sm">Pay Now</button>
+                            <Button 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handlePayNow(bill.month, bill.amount)}
+                            >
+                              <CreditCard className="h-3 w-3 mr-1" />
+                              Pay Now
+                            </Button>
                           )}
                         </div>
                       </TableCell>
