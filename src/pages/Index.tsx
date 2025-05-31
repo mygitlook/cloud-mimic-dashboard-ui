@@ -50,6 +50,12 @@ const Index = () => {
   const [activeService, setActiveService] = useState("dashboard");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [ec2Stats, setEc2Stats] = useState({ total: 0, running: 0, stopped: 0, cost: 0 });
+  const [recentActivity, setRecentActivity] = useState([
+    { action: "Launched VM instance", resource: "vm-0123456789abcdef0", time: "2 minutes ago", status: "success" },
+    { action: "Created storage bucket", resource: "my-app-bucket-2024", time: "15 minutes ago", status: "success" },
+    { action: "Updated database instance", resource: "prod-database", time: "1 hour ago", status: "success" },
+    { action: "Deployed serverless function", resource: "data-processor", time: "3 hours ago", status: "success" },
+  ]);
 
   // Check for existing login session
   useEffect(() => {
@@ -58,6 +64,49 @@ const Index = () => {
       setIsLoggedIn(true);
     }
   }, []);
+
+  // Load recent activities from localStorage 
+  useEffect(() => {
+    const loadRecentActivities = () => {
+      const savedActivities = localStorage.getItem('recent-activities');
+      if (savedActivities) {
+        const activities = JSON.parse(savedActivities);
+        // Format relative time for activities
+        const formattedActivities = activities.map((activity: any) => ({
+          ...activity,
+          time: getRelativeTime(activity.time)
+        }));
+        setRecentActivity(formattedActivities);
+      }
+    };
+
+    if (isLoggedIn) {
+      loadRecentActivities();
+      
+      // Listen for activity updates
+      const handleActivityUpdate = () => loadRecentActivities();
+      window.addEventListener('activity-updated', handleActivityUpdate);
+      
+      return () => {
+        window.removeEventListener('activity-updated', handleActivityUpdate);
+      };
+    }
+  }, [isLoggedIn]);
+
+  const getRelativeTime = (timestamp: string) => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  };
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -90,7 +139,7 @@ const Index = () => {
               "t3.large": 0.068,
               "m5.large": 0.079,
               "c5.large": 0.070,
-              "virtual-pc": 2.92
+              "virtual-pc": 0.09736
             };
             const hourlyRate = hourlyRates[instance.type] || 0.041;
             return total + (hourlyRate * 24 * 30); // Monthly cost in GBP
@@ -122,7 +171,7 @@ const Index = () => {
                 "t3.large": 0.068,
                 "m5.large": 0.079,
                 "c5.large": 0.070,
-                "virtual-pc": 2.92
+                "virtual-pc": 0.09736
               };
               const hourlyRate = hourlyRates[instance.type] || 0.041;
               return total + (hourlyRate * 24 * 30);
@@ -175,13 +224,6 @@ const Index = () => {
     { id: "backup", name: "Backup", icon: Save, description: "Backup Storage", status: "active", backups: 45, cost: 360.00, color: "bg-emerald-500" },
     { id: "support", name: "Premium Support", icon: LifeBuoy, description: "24/7 Expert Support", status: "active", plans: 2, cost: 7000.00, color: "bg-violet-500" },
     { id: "data-transfer", name: "Data Transfer", icon: Network, description: "Outbound Data Transfer", status: "active", transfers: 16, cost: 0.96, color: "bg-slate-500" }
-  ];
-
-  const recentActivity = [
-    { action: "Launched VM instance", resource: "vm-0123456789abcdef0", time: "2 minutes ago", status: "success" },
-    { action: "Created storage bucket", resource: "my-app-bucket-2024", time: "15 minutes ago", status: "success" },
-    { action: "Updated database instance", resource: "prod-database", time: "1 hour ago", status: "success" },
-    { action: "Deployed serverless function", resource: "data-processor", time: "3 hours ago", status: "success" },
   ];
 
   const handleServiceSelect = (serviceId: string) => {

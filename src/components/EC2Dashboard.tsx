@@ -9,13 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Server, 
+  Plus, 
   Play, 
   Square, 
-  RotateCcw, 
-  Trash2, 
-  Plus,
-  DollarSign,
+  RotateCcw,
+  Trash2,
+  Settings,
   Activity,
+  HardDrive,
+  Monitor,
   Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +27,7 @@ interface Instance {
   id: string;
   name: string;
   type: string;
-  state: "running" | "stopped";
+  state: "running" | "stopped" | "rebooting";
   publicIP: string;
   privateIP: string;
   launchTime: string;
@@ -34,45 +36,17 @@ interface Instance {
 
 const EC2Dashboard = () => {
   const [instances, setInstances] = useState<Instance[]>([]);
-  const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
-  const [newInstanceName, setNewInstanceName] = useState("");
-  const [selectedInstanceType, setSelectedInstanceType] = useState("");
-  const [selectedAMI, setSelectedAMI] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { toast } = useToast();
-
-  const instanceTypes = [
-    { id: "t3.micro", name: "t3.micro", specs: "1 vCPU, 1 GB RAM", hourlyRate: 0.0085 },
-    { id: "t3.small", name: "t3.small", specs: "1 vCPU, 2 GB RAM", hourlyRate: 0.017 },
-    { id: "t3.medium", name: "t3.medium", specs: "2 vCPUs, 4 GB RAM", hourlyRate: 0.034 },
-    { id: "t3.large", name: "t3.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.068 },
-    { id: "m5.large", name: "m5.large", specs: "2 vCPUs, 8 GB RAM", hourlyRate: 0.079 },
-    { id: "c5.large", name: "c5.large", specs: "2 vCPUs, 4 GB RAM", hourlyRate: 0.070 },
-    { id: "virtual-pc", name: "Virtual PC", specs: "4 vCPUs, 16 GB RAM", hourlyRate: 0.09736 }
-  ];
-
-  const amis = [
-    { id: "ami-12345", name: "Ubuntu Server 22.04 LTS", description: "64-bit (x86)" },
-    { id: "ami-67890", name: "Amazon Linux 2023", description: "64-bit (x86)" },
-    { id: "ami-11111", name: "Windows Server 2022", description: "64-bit (x86)" },
-    { id: "ami-22222", name: "Red Hat Enterprise Linux 9", description: "64-bit (x86)" },
-    { id: "ami-33333", name: "SUSE Linux Enterprise Server 15", description: "64-bit (x86)" }
-  ];
-
-  useEffect(() => {
-    loadInstances();
-  }, []);
 
   const loadInstances = async () => {
     try {
       setIsLoading(true);
-      const serverInstances = await mockBackend.getInstances();
-      setInstances(serverInstances);
-      // Also sync with localStorage for immediate local access
-      localStorage.setItem('ec2-instances', JSON.stringify(serverInstances));
+      const loadedInstances = await mockBackend.getInstances();
+      setInstances(loadedInstances);
     } catch (error) {
-      console.error('Failed to load instances from server:', error);
-      // Fallback to localStorage
+      console.error('Failed to load instances:', error);
       const savedInstances = localStorage.getItem('ec2-instances');
       if (savedInstances) {
         setInstances(JSON.parse(savedInstances));
@@ -82,161 +56,198 @@ const EC2Dashboard = () => {
     }
   };
 
-  const saveInstances = async (instanceList: Instance[]) => {
+  useEffect(() => {
+    loadInstances();
+  }, []);
+
+  const rebootInstance = async (instanceId: string) => {
     try {
-      // Save to mock backend (simulates server persistence)
-      await mockBackend.saveInstances(instanceList);
-      // Also save locally for immediate access
-      localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
-      // Dispatch custom event to update dashboard stats
-      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
-    } catch (error) {
-      console.error('Failed to save instances to server:', error);
-      // Still save locally as fallback
-      localStorage.setItem('ec2-instances', JSON.stringify(instanceList));
-      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
-    }
-  };
-
-  const calculateHourlyCost = (type: string, state: string) => {
-    if (state !== "running") return 0;
-    const instanceType = instanceTypes.find(t => t.id === type);
-    return instanceType ? instanceType.hourlyRate : 0;
-  };
-
-  const calculateMonthlyCost = (type: string, state: string) => {
-    if (state !== "running") return 0;
-    const hourlyRate = calculateHourlyCost(type, state);
-    return hourlyRate * 24 * 30; // Monthly estimate
-  };
-
-  const launchInstance = async () => {
-    if (!newInstanceName || !selectedInstanceType || !selectedAMI) {
+      // Update instance state to rebooting
+      const updatedInstances = instances.map(instance => 
+        instance.id === instanceId 
+          ? { ...instance, state: "rebooting" as const }
+          : instance
+      );
+      setInstances(updatedInstances);
+      
+      await mockBackend.updateInstance(instanceId, { state: "rebooting" });
+      
       toast({
-        title: "Error",
-        description: "Please fill in all required fields",
+        title: "Instance Rebooting",
+        description: `Instance ${instanceId} is being rebooted...`,
+      });
+
+      // Simulate reboot process (3 seconds)
+      setTimeout(async () => {
+        const finalInstances = instances.map(instance => 
+          instance.id === instanceId 
+            ? { ...instance, state: "running" as const }
+            : instance
+        );
+        setInstances(finalInstances);
+        
+        await mockBackend.updateInstance(instanceId, { state: "running" });
+        
+        toast({
+          title: "Reboot Complete",
+          description: `Instance ${instanceId} has been successfully rebooted.`,
+        });
+
+        // Add to recent activity
+        const activity = {
+          action: "Rebooted VM instance",
+          resource: instanceId,
+          time: new Date().toISOString(),
+          status: "success"
+        };
+        
+        const savedActivities = localStorage.getItem('recent-activities') || '[]';
+        const activities = JSON.parse(savedActivities);
+        activities.unshift(activity);
+        activities.splice(10); // Keep only last 10 activities
+        localStorage.setItem('recent-activities', JSON.stringify(activities));
+        
+        // Trigger custom event for activity update
+        window.dispatchEvent(new CustomEvent('activity-updated'));
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Failed to reboot instance:', error);
+      toast({
+        title: "Reboot Failed",
+        description: "Failed to reboot the instance. Please try again.",
         variant: "destructive",
       });
-      return;
     }
+  };
 
-    const newInstance: Instance = {
-      id: `i-${Math.random().toString(36).substr(2, 9)}${Math.random().toString(36).substr(2, 8)}`,
-      name: newInstanceName,
-      type: selectedInstanceType,
-      state: "running",
-      publicIP: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      privateIP: `10.0.1.${Math.floor(Math.random() * 255)}`,
-      launchTime: new Date().toISOString(),
-      ami: selectedAMI
-    };
-
+  const createInstance = async (instanceData: any) => {
     try {
+      const newInstance: Instance = {
+        id: `i-${Math.random().toString(36).substr(2, 17)}`,
+        name: instanceData.name,
+        type: instanceData.type,
+        state: "running",
+        publicIP: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        privateIP: `10.0.1.${Math.floor(Math.random() * 255)}`,
+        launchTime: new Date().toISOString(), // Real timestamp
+        ami: "ami-12345"
+      };
+
       await mockBackend.addInstance(newInstance);
-      const updatedInstances = [...instances, newInstance];
+      const updatedInstances = await mockBackend.getInstances();
       setInstances(updatedInstances);
+
+      // Add to recent activity
+      const activity = {
+        action: "Launched VM instance",
+        resource: newInstance.id,
+        time: new Date().toISOString(),
+        status: "success"
+      };
       
+      const savedActivities = localStorage.getItem('recent-activities') || '[]';
+      const activities = JSON.parse(savedActivities);
+      activities.unshift(activity);
+      activities.splice(10);
+      localStorage.setItem('recent-activities', JSON.stringify(activities));
+      
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+
       toast({
-        title: "Instance Launched",
-        description: `${newInstanceName} has been launched successfully`,
+        title: "Instance Created",
+        description: `Virtual Machine ${newInstance.name} has been launched successfully.`,
       });
 
-      setIsLaunchDialogOpen(false);
-      setNewInstanceName("");
-      setSelectedInstanceType("");
-      setSelectedAMI("");
+      setShowCreateDialog(false);
     } catch (error) {
-      console.error('Failed to launch instance:', error);
+      console.error('Failed to create instance:', error);
       toast({
-        title: "Error",
-        description: "Failed to launch instance. Please try again.",
+        title: "Creation Failed", 
+        description: "Failed to create the instance. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const startInstance = async (id: string) => {
+  const deleteInstance = async (instanceId: string) => {
     try {
-      await mockBackend.updateInstance(id, { state: "running" });
-      const updatedInstances = instances.map(instance =>
-        instance.id === id ? { ...instance, state: "running" as const } : instance
-      );
+      await mockBackend.deleteInstance(instanceId);
+      const updatedInstances = await mockBackend.getInstances();
       setInstances(updatedInstances);
       
-      const instance = instances.find(i => i.id === id);
+      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+      
       toast({
-        title: "Instance Started",
-        description: `${instance?.name} is now running`,
+        title: "Instance Deleted",
+        description: `Instance ${instanceId} has been terminated.`,
       });
     } catch (error) {
-      console.error('Failed to start instance:', error);
+      console.error('Failed to delete instance:', error);
+      toast({
+        title: "Deletion Failed",
+        description: "Failed to delete the instance. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const stopInstance = async (id: string) => {
-    try {
-      await mockBackend.updateInstance(id, { state: "stopped" });
-      const updatedInstances = instances.map(instance =>
-        instance.id === id ? { ...instance, state: "stopped" as const } : instance
-      );
-      setInstances(updatedInstances);
-      
-      const instance = instances.find(i => i.id === id);
-      toast({
-        title: "Instance Stopped",
-        description: `${instance?.name} has been stopped`,
-      });
-    } catch (error) {
-      console.error('Failed to stop instance:', error);
+  const getStatusColor = (state: string) => {
+    switch (state) {
+      case "running": return "bg-green-100 text-green-800";
+      case "stopped": return "bg-red-100 text-red-800";
+      case "rebooting": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  const rebootInstance = (id: string) => {
-    const instance = instances.find(i => i.id === id);
-    toast({
-      title: "Instance Rebooting",
-      description: `${instance?.name} is being rebooted`,
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
-  const terminateInstance = async (id: string) => {
-    try {
-      const instance = instances.find(i => i.id === id);
-      await mockBackend.deleteInstance(id);
-      const updatedInstances = instances.filter(i => i.id !== id);
-      setInstances(updatedInstances);
-      
-      toast({
-        title: "Instance Terminated",
-        description: `${instance?.name} has been terminated`,
-        variant: "destructive",
-      });
-    } catch (error) {
-      console.error('Failed to terminate instance:', error);
-    }
-  };
+  const [newInstance, setNewInstance] = useState({
+    name: "",
+    type: "virtual-pc",
+    ami: "ami-12345"
+  });
+
+  const instanceTypes = [
+    { id: "virtual-pc", name: "Virtual PC", specs: "4 vCPU, 16 GB RAM", cost: "£0.09736/hour (£70.10/month)" },
+    { id: "t3.micro", name: "t3.micro", specs: "1 vCPU, 1 GB RAM", cost: "£0.0085/hour" },
+    { id: "t3.small", name: "t3.small", specs: "1 vCPU, 2 GB RAM", cost: "£0.017/hour" },
+    { id: "t3.medium", name: "t3.medium", specs: "2 vCPU, 4 GB RAM", cost: "£0.034/hour" },
+    { id: "t3.large", name: "t3.large", specs: "2 vCPU, 8 GB RAM", cost: "£0.068/hour" }
+  ];
 
   const runningInstances = instances.filter(i => i.state === "running").length;
   const stoppedInstances = instances.filter(i => i.state === "stopped").length;
-  const totalHourlyCost = instances.reduce((sum, instance) => 
-    sum + calculateHourlyCost(instance.type, instance.state), 0
-  );
-  const totalMonthlyCost = instances.reduce((sum, instance) => 
-    sum + calculateMonthlyCost(instance.type, instance.state), 0
-  );
+  const rebootingInstances = instances.filter(i => i.state === "rebooting").length;
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-center items-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2563eb] mx-auto mb-4"></div>
-            <p>Loading instances...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const totalCost = instances.reduce((total, instance) => {
+    if (instance.state === "running") {
+      const hourlyRates: { [key: string]: number } = {
+        "t3.micro": 0.0085,
+        "t3.small": 0.017,
+        "t3.medium": 0.034,
+        "t3.large": 0.068,
+        "m5.large": 0.079,
+        "c5.large": 0.070,
+        "virtual-pc": 0.09736
+      };
+      const hourlyRate = hourlyRates[instance.type] || 0.041;
+      return total + (hourlyRate * 24 * 30);
+    }
+    return total;
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -244,71 +255,61 @@ const EC2Dashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Virtual Machines (EC2)</h1>
-          <p className="text-gray-600">Launch and manage virtual server instances</p>
+          <p className="text-gray-600">Manage your virtual compute instances</p>
         </div>
-        <Dialog open={isLaunchDialogOpen} onOpenChange={setIsLaunchDialogOpen}>
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button className="bg-[#2563eb] hover:bg-blue-700">
+            <Button className="bg-[#FF9900] hover:bg-[#e8890a]">
               <Plus className="h-4 w-4 mr-2" />
               Launch Instance
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Launch New Instance</DialogTitle>
               <DialogDescription>
-                Configure your new virtual machine instance
+                Create a new virtual machine instance
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="instance-name">Instance Name</Label>
+              <div className="space-y-2">
+                <Label htmlFor="instanceName">Instance Name</Label>
                 <Input
-                  id="instance-name"
-                  value={newInstanceName}
-                  onChange={(e) => setNewInstanceName(e.target.value)}
-                  placeholder="Enter instance name"
+                  id="instanceName"
+                  placeholder="my-instance"
+                  value={newInstance.name}
+                  onChange={(e) => setNewInstance({...newInstance, name: e.target.value})}
                 />
               </div>
-              <div>
-                <Label htmlFor="instance-type">Instance Type</Label>
-                <Select value={selectedInstanceType} onValueChange={setSelectedInstanceType}>
+              <div className="space-y-2">
+                <Label htmlFor="instanceType">Instance Type</Label>
+                <Select onValueChange={(value) => setNewInstance({...newInstance, type: value})} defaultValue="virtual-pc">
                   <SelectTrigger>
-                    <SelectValue placeholder="Select instance type" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {instanceTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         <div>
                           <div className="font-medium">{type.name}</div>
-                          <div className="text-xs text-gray-500">
-                            {type.specs} - £{type.hourlyRate.toFixed(2)}/hour (£{(type.hourlyRate * 24 * 30).toFixed(2)}/month)
-                          </div>
+                          <div className="text-xs text-gray-500">{type.specs}</div>
+                          <div className="text-xs text-green-600">{type.cost}</div>
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="ami">Amazon Machine Image (AMI)</Label>
-                <Select value={selectedAMI} onValueChange={setSelectedAMI}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select AMI" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {amis.map((ami) => (
-                      <SelectItem key={ami.id} value={ami.id}>
-                        <div>
-                          <div className="font-medium">{ami.name}</div>
-                          <div className="text-xs text-gray-500">{ami.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={launchInstance} className="w-full">
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => createInstance(newInstance)}
+                className="bg-[#FF9900] hover:bg-[#e8890a]"
+                disabled={!newInstance.name}
+              >
                 Launch Instance
               </Button>
             </div>
@@ -321,20 +322,18 @@ const EC2Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Instances</CardTitle>
-            <Server className="h-4 w-4 text-[#2563eb]" />
+            <Server className="h-4 w-4 text-[#FF9900]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{instances.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {runningInstances} running, {stoppedInstances} stopped
-            </p>
+            <p className="text-xs text-muted-foreground">Virtual machines</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Running</CardTitle>
-            <Activity className="h-4 w-4 text-green-500" />
+            <Play className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{runningInstances}</div>
@@ -344,22 +343,22 @@ const EC2Dashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hourly Cost</CardTitle>
-            <Zap className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium">Stopped</CardTitle>
+            <Square className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{totalHourlyCost.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Current rate</p>
+            <div className="text-2xl font-bold text-red-600">{stoppedInstances}</div>
+            <p className="text-xs text-muted-foreground">Stopped instances</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Monthly Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-500" />
+            <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{totalMonthlyCost.toFixed(2)}</div>
+            <div className="text-2xl font-bold">£{totalCost.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Estimated cost</p>
           </CardContent>
         </Card>
@@ -368,78 +367,66 @@ const EC2Dashboard = () => {
       {/* Instances Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Instance Overview</CardTitle>
-          <CardDescription>Manage your virtual machine instances</CardDescription>
+          <CardTitle>Instances</CardTitle>
+          <CardDescription>Your virtual machine instances</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Instance ID</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Public IP</TableHead>
-                <TableHead>Private IP</TableHead>
-                <TableHead>Hourly Cost</TableHead>
-                <TableHead>Monthly Est.</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instances.map((instance) => (
-                <TableRow key={instance.id}>
-                  <TableCell className="font-medium">{instance.name}</TableCell>
-                  <TableCell>{instance.id}</TableCell>
-                  <TableCell>{instance.type}</TableCell>
-                  <TableCell>
-                    <Badge variant={instance.state === "running" ? "default" : "secondary"}>
-                      {instance.state}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{instance.publicIP}</TableCell>
-                  <TableCell>{instance.privateIP}</TableCell>
-                  <TableCell>£{calculateHourlyCost(instance.type, instance.state).toFixed(2)}/hr</TableCell>
-                  <TableCell>£{calculateMonthlyCost(instance.type, instance.state).toFixed(2)}/mo</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      {instance.state === "stopped" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => startInstance(instance.id)}
-                        >
-                          <Play className="h-3 w-3" />
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => stopInstance(instance.id)}
-                        >
-                          <Square className="h-3 w-3" />
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => rebootInstance(instance.id)}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => terminateInstance(instance.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <div className="text-center py-8">Loading instances...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Instance ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Public IP</TableHead>
+                  <TableHead>Launch Time</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {instances.map((instance) => (
+                  <TableRow key={instance.id}>
+                    <TableCell className="font-mono text-sm">{instance.id}</TableCell>
+                    <TableCell className="font-medium">{instance.name}</TableCell>
+                    <TableCell>{instance.type}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(instance.state)}>
+                        {instance.state}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{instance.publicIP}</TableCell>
+                    <TableCell className="text-sm">{formatTime(instance.launchTime)}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => rebootInstance(instance.id)}
+                          disabled={instance.state === "rebooting"}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Settings className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600"
+                          onClick={() => deleteInstance(instance.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
