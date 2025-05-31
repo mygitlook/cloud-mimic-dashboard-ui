@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +23,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-const ZeltraHeader = ({ onServiceSearch, onServiceSelect }: { 
+const ZeltraHeader = ({ onServiceSearch, onServiceSelect, onLogout }: { 
   onServiceSearch?: (query: string) => void;
   onServiceSelect?: (service: string) => void;
+  onLogout?: () => void;
 }) => {
   const [region, setRegion] = useState("eu-west-1");
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +89,7 @@ const ZeltraHeader = ({ onServiceSearch, onServiceSelect }: {
           title: "Signed Out",
           description: "You have been successfully signed out.",
         });
+        if (onLogout) onLogout();
         break;
       default:
         break;
