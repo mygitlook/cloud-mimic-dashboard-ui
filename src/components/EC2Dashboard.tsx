@@ -20,17 +20,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabaseService, Instance } from "@/utils/supabaseService";
 
-interface Instance {
-  id: string;
-  name: string;
-  type: string;
-  state: "running" | "stopped" | "rebooting";
-  public_ip: string;
-  private_ip: string;
-  created_at: string;
-  ami: string;
-}
-
 const EC2Dashboard = () => {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isLoading, setIsLoading] = useState(true);

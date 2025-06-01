@@ -42,7 +42,10 @@ export const supabaseService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(instance => ({
+      ...instance,
+      state: instance.state as "running" | "stopped" | "rebooting"
+    }));
   },
 
   async createInstance(instance: Omit<Instance, 'user_id' | 'created_at' | 'updated_at'>): Promise<Instance> {
@@ -56,7 +59,10 @@ export const supabaseService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      state: data.state as "running" | "stopped" | "rebooting"
+    };
   },
 
   async updateInstance(id: string, updates: Partial<Instance>): Promise<Instance> {
@@ -68,7 +74,10 @@ export const supabaseService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      state: data.state as "running" | "stopped" | "rebooting"
+    };
   },
 
   async deleteInstance(id: string): Promise<void> {
