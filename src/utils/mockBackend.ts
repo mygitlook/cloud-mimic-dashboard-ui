@@ -1,4 +1,3 @@
-
 // Mock backend simulation to persist data across browsers
 const BACKEND_URL = 'https://api.zeltraconnect.com'; // Mock URL
 
@@ -14,7 +13,7 @@ interface Instance {
 }
 
 // Simulate server-side storage
-const mockServerData = {
+const mockServerData: { instances: Instance[] } = {
   instances: [
     {
       id: "i-1234567890abcdef0",
