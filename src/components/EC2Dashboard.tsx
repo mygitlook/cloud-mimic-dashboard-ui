@@ -60,6 +60,90 @@ const EC2Dashboard = () => {
     loadInstances();
   }, []);
 
+  const startInstance = async (instanceId: string) => {
+    try {
+      const updatedInstances = instances.map(instance => 
+        instance.id === instanceId 
+          ? { ...instance, state: "running" as const }
+          : instance
+      );
+      setInstances(updatedInstances);
+      
+      await mockBackend.updateInstance(instanceId, { state: "running" });
+      
+      toast({
+        title: "Instance Started",
+        description: `Instance ${instanceId} has been started.`,
+      });
+
+      // Add to recent activity
+      const activity = {
+        action: "Started VM instance",
+        resource: instanceId,
+        time: new Date().toISOString(),
+        status: "success"
+      };
+      
+      const savedActivities = localStorage.getItem('recent-activities') || '[]';
+      const activities = JSON.parse(savedActivities);
+      activities.unshift(activity);
+      activities.splice(10);
+      localStorage.setItem('recent-activities', JSON.stringify(activities));
+      
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+      
+    } catch (error) {
+      console.error('Failed to start instance:', error);
+      toast({
+        title: "Start Failed",
+        description: "Failed to start the instance. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopInstance = async (instanceId: string) => {
+    try {
+      const updatedInstances = instances.map(instance => 
+        instance.id === instanceId 
+          ? { ...instance, state: "stopped" as const }
+          : instance
+      );
+      setInstances(updatedInstances);
+      
+      await mockBackend.updateInstance(instanceId, { state: "stopped" });
+      
+      toast({
+        title: "Instance Stopped",
+        description: `Instance ${instanceId} has been stopped.`,
+      });
+
+      // Add to recent activity
+      const activity = {
+        action: "Stopped VM instance",
+        resource: instanceId,
+        time: new Date().toISOString(),
+        status: "success"
+      };
+      
+      const savedActivities = localStorage.getItem('recent-activities') || '[]';
+      const activities = JSON.parse(savedActivities);
+      activities.unshift(activity);
+      activities.splice(10);
+      localStorage.setItem('recent-activities', JSON.stringify(activities));
+      
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+      
+    } catch (error) {
+      console.error('Failed to stop instance:', error);
+      toast({
+        title: "Stop Failed",
+        description: "Failed to stop the instance. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const rebootInstance = async (instanceId: string) => {
     try {
       // Update instance state to rebooting
@@ -401,6 +485,26 @@ const EC2Dashboard = () => {
                     <TableCell className="text-sm">{formatTime(instance.launchTime)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        {instance.state === "stopped" && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => startInstance(instance.id)}
+                            className="text-green-600"
+                          >
+                            <Play className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {instance.state === "running" && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => stopInstance(instance.id)}
+                            className="text-red-600"
+                          >
+                            <Square className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button 
                           size="sm" 
                           variant="outline"
