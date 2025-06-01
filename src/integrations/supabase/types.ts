@@ -9,13 +9,209 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          resource: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          resource: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          resource?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          id: string
+          invoice_data: Json
+          month: number
+          total_amount: number
+          user_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          invoice_data: Json
+          month: number
+          total_amount: number
+          user_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          invoice_data?: Json
+          month?: number
+          total_amount?: number
+          user_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instances: {
+        Row: {
+          ami: string | null
+          created_at: string | null
+          id: string
+          name: string
+          private_ip: string | null
+          public_ip: string | null
+          state: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ami?: string | null
+          created_at?: string | null
+          id: string
+          name: string
+          private_ip?: string | null
+          public_ip?: string | null
+          state: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ami?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          private_ip?: string | null
+          public_ip?: string | null
+          state?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          permissions: Json | null
+          role: string | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          permissions?: Json | null
+          role?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          cost_per_hour: number
+          created_at: string | null
+          id: string
+          service_name: string
+          service_type: string
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cost_per_hour: number
+          created_at?: string | null
+          id?: string
+          service_name: string
+          service_type: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cost_per_hour?: number
+          created_at?: string | null
+          id?: string
+          service_name?: string
+          service_type?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_monthly_billing: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -15,22 +15,19 @@ import {
   RotateCcw,
   Trash2,
   Settings,
-  Activity,
-  HardDrive,
-  Monitor,
-  Zap
+  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mockBackend } from "@/utils/mockBackend";
+import { supabaseService, Instance } from "@/utils/supabaseService";
 
 interface Instance {
   id: string;
   name: string;
   type: string;
   state: "running" | "stopped" | "rebooting";
-  publicIP: string;
-  privateIP: string;
-  launchTime: string;
+  public_ip: string;
+  private_ip: string;
+  created_at: string;
   ami: string;
 }
 
@@ -43,14 +40,15 @@ const EC2Dashboard = () => {
   const loadInstances = async () => {
     try {
       setIsLoading(true);
-      const loadedInstances = await mockBackend.getInstances();
+      const loadedInstances = await supabaseService.getInstances();
       setInstances(loadedInstances);
     } catch (error) {
       console.error('Failed to load instances:', error);
-      const savedInstances = localStorage.getItem('ec2-instances');
-      if (savedInstances) {
-        setInstances(JSON.parse(savedInstances));
-      }
+      toast({
+        title: "Load Failed",
+        description: "Failed to load instances. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -62,36 +60,15 @@ const EC2Dashboard = () => {
 
   const startInstance = async (instanceId: string) => {
     try {
-      const updatedInstances = instances.map(instance => 
-        instance.id === instanceId 
-          ? { ...instance, state: "running" as const }
-          : instance
-      );
-      setInstances(updatedInstances);
-      
-      await mockBackend.updateInstance(instanceId, { state: "running" });
+      await supabaseService.updateInstance(instanceId, { state: "running" });
+      await supabaseService.addActivityLog("Started VM instance", instanceId);
       
       toast({
         title: "Instance Started",
         description: `Instance ${instanceId} has been started.`,
       });
 
-      // Add to recent activity
-      const activity = {
-        action: "Started VM instance",
-        resource: instanceId,
-        time: new Date().toISOString(),
-        status: "success"
-      };
-      
-      const savedActivities = localStorage.getItem('recent-activities') || '[]';
-      const activities = JSON.parse(savedActivities);
-      activities.unshift(activity);
-      activities.splice(10);
-      localStorage.setItem('recent-activities', JSON.stringify(activities));
-      
-      window.dispatchEvent(new CustomEvent('activity-updated'));
-      
+      loadInstances();
     } catch (error) {
       console.error('Failed to start instance:', error);
       toast({
@@ -104,36 +81,15 @@ const EC2Dashboard = () => {
 
   const stopInstance = async (instanceId: string) => {
     try {
-      const updatedInstances = instances.map(instance => 
-        instance.id === instanceId 
-          ? { ...instance, state: "stopped" as const }
-          : instance
-      );
-      setInstances(updatedInstances);
-      
-      await mockBackend.updateInstance(instanceId, { state: "stopped" });
+      await supabaseService.updateInstance(instanceId, { state: "stopped" });
+      await supabaseService.addActivityLog("Stopped VM instance", instanceId);
       
       toast({
         title: "Instance Stopped",
         description: `Instance ${instanceId} has been stopped.`,
       });
 
-      // Add to recent activity
-      const activity = {
-        action: "Stopped VM instance",
-        resource: instanceId,
-        time: new Date().toISOString(),
-        status: "success"
-      };
-      
-      const savedActivities = localStorage.getItem('recent-activities') || '[]';
-      const activities = JSON.parse(savedActivities);
-      activities.unshift(activity);
-      activities.splice(10);
-      localStorage.setItem('recent-activities', JSON.stringify(activities));
-      
-      window.dispatchEvent(new CustomEvent('activity-updated'));
-      
+      loadInstances();
     } catch (error) {
       console.error('Failed to stop instance:', error);
       toast({
@@ -146,55 +102,24 @@ const EC2Dashboard = () => {
 
   const rebootInstance = async (instanceId: string) => {
     try {
-      // Update instance state to rebooting
-      const updatedInstances = instances.map(instance => 
-        instance.id === instanceId 
-          ? { ...instance, state: "rebooting" as const }
-          : instance
-      );
-      setInstances(updatedInstances);
-      
-      await mockBackend.updateInstance(instanceId, { state: "rebooting" });
+      await supabaseService.updateInstance(instanceId, { state: "rebooting" });
+      await supabaseService.addActivityLog("Rebooted VM instance", instanceId);
       
       toast({
         title: "Instance Rebooting",
         description: `Instance ${instanceId} is being rebooted...`,
       });
 
-      // Simulate reboot process (3 seconds)
+      // Simulate reboot process
       setTimeout(async () => {
-        const finalInstances = instances.map(instance => 
-          instance.id === instanceId 
-            ? { ...instance, state: "running" as const }
-            : instance
-        );
-        setInstances(finalInstances);
-        
-        await mockBackend.updateInstance(instanceId, { state: "running" });
+        await supabaseService.updateInstance(instanceId, { state: "running" });
+        loadInstances();
         
         toast({
           title: "Reboot Complete",
           description: `Instance ${instanceId} has been successfully rebooted.`,
         });
-
-        // Add to recent activity
-        const activity = {
-          action: "Rebooted VM instance",
-          resource: instanceId,
-          time: new Date().toISOString(),
-          status: "success"
-        };
-        
-        const savedActivities = localStorage.getItem('recent-activities') || '[]';
-        const activities = JSON.parse(savedActivities);
-        activities.unshift(activity);
-        activities.splice(10); // Keep only last 10 activities
-        localStorage.setItem('recent-activities', JSON.stringify(activities));
-        
-        // Trigger custom event for activity update
-        window.dispatchEvent(new CustomEvent('activity-updated'));
       }, 3000);
-      
     } catch (error) {
       console.error('Failed to reboot instance:', error);
       toast({
@@ -207,37 +132,18 @@ const EC2Dashboard = () => {
 
   const createInstance = async (instanceData: any) => {
     try {
-      const newInstance: Instance = {
+      const newInstance = {
         id: `i-${Math.random().toString(36).substr(2, 17)}`,
         name: instanceData.name,
         type: instanceData.type,
-        state: "running",
-        publicIP: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        privateIP: `10.0.1.${Math.floor(Math.random() * 255)}`,
-        launchTime: new Date().toISOString(), // Real timestamp
+        state: "running" as const,
+        public_ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        private_ip: `10.0.1.${Math.floor(Math.random() * 255)}`,
         ami: "ami-12345"
       };
 
-      await mockBackend.addInstance(newInstance);
-      const updatedInstances = await mockBackend.getInstances();
-      setInstances(updatedInstances);
-
-      // Add to recent activity
-      const activity = {
-        action: "Launched VM instance",
-        resource: newInstance.id,
-        time: new Date().toISOString(),
-        status: "success"
-      };
-      
-      const savedActivities = localStorage.getItem('recent-activities') || '[]';
-      const activities = JSON.parse(savedActivities);
-      activities.unshift(activity);
-      activities.splice(10);
-      localStorage.setItem('recent-activities', JSON.stringify(activities));
-      
-      window.dispatchEvent(new CustomEvent('activity-updated'));
-      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+      await supabaseService.createInstance(newInstance);
+      await supabaseService.addActivityLog("Launched VM instance", newInstance.id);
 
       toast({
         title: "Instance Created",
@@ -245,6 +151,7 @@ const EC2Dashboard = () => {
       });
 
       setShowCreateDialog(false);
+      loadInstances();
     } catch (error) {
       console.error('Failed to create instance:', error);
       toast({
@@ -257,16 +164,15 @@ const EC2Dashboard = () => {
 
   const deleteInstance = async (instanceId: string) => {
     try {
-      await mockBackend.deleteInstance(instanceId);
-      const updatedInstances = await mockBackend.getInstances();
-      setInstances(updatedInstances);
-      
-      window.dispatchEvent(new CustomEvent('ec2-instances-updated'));
+      await supabaseService.deleteInstance(instanceId);
+      await supabaseService.addActivityLog("Terminated VM instance", instanceId);
       
       toast({
         title: "Instance Deleted",
         description: `Instance ${instanceId} has been terminated.`,
       });
+
+      loadInstances();
     } catch (error) {
       console.error('Failed to delete instance:', error);
       toast({
@@ -481,8 +387,8 @@ const EC2Dashboard = () => {
                         {instance.state}
                       </Badge>
                     </TableCell>
-                    <TableCell>{instance.publicIP}</TableCell>
-                    <TableCell className="text-sm">{formatTime(instance.launchTime)}</TableCell>
+                    <TableCell>{instance.public_ip}</TableCell>
+                    <TableCell className="text-sm">{formatTime(instance.created_at)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         {instance.state === "stopped" && (
