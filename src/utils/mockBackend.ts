@@ -6,7 +6,7 @@ interface Instance {
   id: string;
   name: string;
   type: string;
-  state: "running" | "stopped";
+  state: "running" | "stopped" | "rebooting";
   publicIP: string;
   privateIP: string;
   launchTime: string;
