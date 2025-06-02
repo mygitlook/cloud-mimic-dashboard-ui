@@ -85,6 +85,42 @@ export type Database = {
           },
         ]
       }
+      billing_summary: {
+        Row: {
+          billing_period: string
+          currency: string | null
+          generated_at: string | null
+          id: string
+          invoice_data: Json | null
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          billing_period: string
+          currency?: string | null
+          generated_at?: string | null
+          id?: string
+          invoice_data?: Json | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          billing_period?: string
+          currency?: string | null
+          generated_at?: string | null
+          id?: string
+          invoice_data?: Json | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       campaign_attachments: {
         Row: {
           campaign_id: string | null
@@ -212,6 +248,219 @@ export type Database = {
           },
         ]
       }
+      iam_group_policies: {
+        Row: {
+          assigned_at: string | null
+          group_id: string | null
+          id: string
+          policy_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          group_id?: string | null
+          id?: string
+          policy_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          group_id?: string | null
+          id?: string
+          policy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iam_group_policies_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "iam_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iam_group_policies_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "iam_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iam_groups: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      iam_policies: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          policy_document: Json
+          policy_type: string | null
+          updated_at: string | null
+          version: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          policy_document: Json
+          policy_type?: string | null
+          updated_at?: string | null
+          version?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          policy_document?: Json
+          policy_type?: string | null
+          updated_at?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
+      iam_user_groups: {
+        Row: {
+          assigned_at: string | null
+          group_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          group_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          group_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iam_user_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "iam_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iam_user_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "iam_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iam_user_policies: {
+        Row: {
+          assigned_at: string | null
+          id: string
+          policy_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          id?: string
+          policy_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          id?: string
+          policy_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iam_user_policies_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "iam_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iam_user_policies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "iam_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iam_users: {
+        Row: {
+          console_access: boolean | null
+          created_at: string | null
+          created_by: string | null
+          email: string
+          full_name: string | null
+          id: string
+          last_activity: string | null
+          mfa_enabled: boolean | null
+          password_hash: string
+          programmatic_access: boolean | null
+          status: string | null
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          console_access?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          last_activity?: string | null
+          mfa_enabled?: boolean | null
+          password_hash: string
+          programmatic_access?: boolean | null
+          status?: string | null
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          console_access?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          last_activity?: string | null
+          mfa_enabled?: boolean | null
+          password_hash?: string
+          programmatic_access?: boolean | null
+          status?: string | null
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       instances: {
         Row: {
           ami: string | null
@@ -289,6 +538,48 @@ export type Database = {
         }
         Relationships: []
       }
+      service_usage: {
+        Row: {
+          billing_period: string
+          id: string
+          metadata: Json | null
+          quantity: number
+          recorded_at: string | null
+          resource_id: string | null
+          service_type: string
+          total_cost: number
+          unit_cost: number
+          usage_type: string
+          user_id: string | null
+        }
+        Insert: {
+          billing_period: string
+          id?: string
+          metadata?: Json | null
+          quantity: number
+          recorded_at?: string | null
+          resource_id?: string | null
+          service_type: string
+          total_cost: number
+          unit_cost: number
+          usage_type: string
+          user_id?: string | null
+        }
+        Update: {
+          billing_period?: string
+          id?: string
+          metadata?: Json | null
+          quantity?: number
+          recorded_at?: string | null
+          resource_id?: string | null
+          service_type?: string
+          total_cost?: number
+          unit_cost?: number
+          usage_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           cost_per_hour: number
@@ -335,8 +626,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_monthly_billing: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_monthly_billing: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      track_service_usage: {
+        Args: {
+          p_user_id: string
+          p_service_type: string
+          p_resource_id: string
+          p_usage_type: string
+          p_quantity: number
+          p_unit_cost: number
+        }
         Returns: undefined
       }
     }

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, 
   Plus, 
@@ -18,151 +18,213 @@ import {
   UserPlus,
   Settings,
   Trash2,
-  Lock
+  Lock,
+  Loader2
 } from "lucide-react";
+import { iamService, IAMUser, IAMGroup, IAMPolicy } from "@/utils/iamService";
 
 const IAMDashboard = () => {
-  const [users, setUsers] = useState([
-    {
-      username: "john.doe",
-      email: "john.doe@company.com",
-      status: "active",
-      created: "2024-01-10",
-      lastActivity: "2024-01-20 14:30",
-      mfaEnabled: true,
-      groups: ["Developers", "S3ReadOnly"]
-    },
-    {
-      username: "jane.smith",
-      email: "jane.smith@company.com", 
-      status: "active",
-      created: "2024-01-12",
-      lastActivity: "2024-01-20 10:15",
-      mfaEnabled: false,
-      groups: ["Administrators"]
-    },
-    {
-      username: "bob.wilson",
-      email: "bob.wilson@company.com",
-      status: "inactive",
-      created: "2024-01-08",
-      lastActivity: "2024-01-18 16:45",
-      mfaEnabled: true,
-      groups: ["ReadOnly"]
-    }
-  ]);
-
-  const [policies, setPolicies] = useState([
-    {
-      name: "S3FullAccess",
-      type: "AWS Managed",
-      description: "Provides full access to all S3 resources",
-      attachedTo: 2,
-      created: "AWS",
-      version: "v1"
-    },
-    {
-      name: "EC2ReadOnlyAccess",
-      type: "AWS Managed", 
-      description: "Provides read-only access to EC2 resources",
-      attachedTo: 1,
-      created: "AWS",
-      version: "v1"
-    },
-    {
-      name: "CustomDeveloperPolicy",
-      type: "Customer Managed",
-      description: "Custom policy for developer access",
-      attachedTo: 3,
-      created: "2024-01-15",
-      version: "v2"
-    }
-  ]);
-
+  const [users, setUsers] = useState<IAMUser[]>([]);
+  const [groups, setGroups] = useState<IAMGroup[]>([]);
+  const [policies, setPolicies] = useState<IAMPolicy[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
   const [showCreatePolicyDialog, setShowCreatePolicyDialog] = useState(false);
+  const { toast } = useToast();
+
   const [newUser, setNewUser] = useState({
     username: "",
     email: "",
     password: "",
-    groups: [],
-    policies: [],
-    accessType: "console"
+    full_name: "",
+    groups: [] as string[],
+    console_access: true,
+    programmatic_access: false
   });
 
   const [newPolicy, setNewPolicy] = useState({
     name: "",
     description: "",
-    document: "",
+    policy_document: "",
     effect: "Allow",
     actions: "",
     resources: ""
   });
 
-  const accessTypes = [
-    { value: "console", label: "AWS Management Console access" },
-    { value: "programmatic", label: "Programmatic access" },
-    { value: "both", label: "Both console and programmatic access" }
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const groups = ["Administrators", "Developers", "ReadOnly", "S3ReadOnly", "EC2ReadOnly"];
-
-  const handleCreateUser = () => {
-    const newUserData = {
-      username: newUser.username,
-      email: newUser.email,
-      status: "active",
-      created: new Date().toISOString().split('T')[0],
-      lastActivity: "Never",
-      mfaEnabled: false,
-      groups: newUser.groups
-    };
-
-    setUsers([...users, newUserData]);
-    setShowCreateUserDialog(false);
-    setNewUser({
-      username: "",
-      email: "",
-      password: "",
-      groups: [],
-      policies: [],
-      accessType: "console"
-    });
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [usersData, groupsData, policiesData] = await Promise.all([
+        iamService.getIAMUsers(),
+        iamService.getIAMGroups(),
+        iamService.getIAMPolicies()
+      ]);
+      
+      setUsers(usersData);
+      setGroups(groupsData);
+      setPolicies(policiesData);
+    } catch (error: any) {
+      toast({
+        title: "Error loading IAM data",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreatePolicy = () => {
-    const newPolicyData = {
-      name: newPolicy.name,
-      type: "Customer Managed",
-      description: newPolicy.description,
-      attachedTo: 0,
-      created: new Date().toISOString().split('T')[0],
-      version: "v1"
-    };
+  const handleCreateUser = async () => {
+    try {
+      if (!newUser.username || !newUser.email || !newUser.password) {
+        toast({
+          title: "Validation Error",
+          description: "Username, email, and password are required",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setPolicies([...policies, newPolicyData]);
-    setShowCreatePolicyDialog(false);
-    setNewPolicy({
-      name: "",
-      description: "",
-      document: "",
-      effect: "Allow",
-      actions: "",
-      resources: ""
-    });
+      const createdUser = await iamService.createIAMUser({
+        username: newUser.username,
+        email: newUser.email,
+        password: newUser.password,
+        full_name: newUser.full_name,
+        console_access: newUser.console_access,
+        programmatic_access: newUser.programmatic_access,
+        groups: newUser.groups
+      });
+
+      setUsers([createdUser, ...users]);
+      setShowCreateUserDialog(false);
+      setNewUser({
+        username: "",
+        email: "",
+        password: "",
+        full_name: "",
+        groups: [],
+        console_access: true,
+        programmatic_access: false
+      });
+
+      toast({
+        title: "User Created",
+        description: `IAM user ${createdUser.username} has been created successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error creating user",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreatePolicy = async () => {
+    try {
+      if (!newPolicy.name) {
+        toast({
+          title: "Validation Error",
+          description: "Policy name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let policyDocument;
+      if (newPolicy.policy_document) {
+        try {
+          policyDocument = JSON.parse(newPolicy.policy_document);
+        } catch {
+          toast({
+            title: "Invalid JSON",
+            description: "Policy document must be valid JSON",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        // Generate policy document from simple inputs
+        policyDocument = {
+          Version: "2012-10-17",
+          Statement: [{
+            Effect: newPolicy.effect,
+            Action: newPolicy.actions.split(',').map(a => a.trim()),
+            Resource: newPolicy.resources.split(',').map(r => r.trim())
+          }]
+        };
+      }
+
+      const createdPolicy = await iamService.createIAMPolicy({
+        name: newPolicy.name,
+        description: newPolicy.description,
+        policy_document: policyDocument
+      });
+
+      setPolicies([createdPolicy, ...policies]);
+      setShowCreatePolicyDialog(false);
+      setNewPolicy({
+        name: "",
+        description: "",
+        policy_document: "",
+        effect: "Allow",
+        actions: "",
+        resources: ""
+      });
+
+      toast({
+        title: "Policy Created",
+        description: `Policy ${createdPolicy.name} has been created successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error creating policy",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, username: string) => {
+    try {
+      await iamService.deleteIAMUser(userId);
+      setUsers(users.filter(u => u.id !== userId));
+      toast({
+        title: "User Deleted",
+        description: `IAM user ${username} has been deleted`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting user",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active": return "bg-green-100 text-green-800";
       case "inactive": return "bg-red-100 text-red-800";
+      case "suspended": return "bg-yellow-100 text-yellow-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const activeUsers = users.filter(u => u.status === "active").length;
-  const totalPolicies = policies.length;
-  const mfaEnabledUsers = users.filter(u => u.mfaEnabled).length;
+  const mfaEnabledUsers = users.filter(u => u.mfa_enabled).length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -182,7 +244,7 @@ const IAMDashboard = () => {
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add User</DialogTitle>
+                <DialogTitle>Add IAM User</DialogTitle>
                 <DialogDescription>
                   Create a new IAM user with specific permissions
                 </DialogDescription>
@@ -217,32 +279,44 @@ const IAMDashboard = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="accessType">Access Type</Label>
-                    <Select onValueChange={(value) => setNewUser({...newUser, accessType: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select access type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accessTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="John Doe"
+                      value={newUser.full_name}
+                      onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
+                    />
                   </div>
-                  {(newUser.accessType === "console" || newUser.accessType === "both") && (
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Console Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Enter password"
-                        value={newUser.password}
-                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="consoleAccess"
+                        checked={newUser.console_access}
+                        onChange={(e) => setNewUser({...newUser, console_access: e.target.checked})}
                       />
+                      <label htmlFor="consoleAccess" className="text-sm">Console Access</label>
                     </div>
-                  )}
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="programmaticAccess"
+                        checked={newUser.programmatic_access}
+                        onChange={(e) => setNewUser({...newUser, programmatic_access: e.target.checked})}
+                      />
+                      <label htmlFor="programmaticAccess" className="text-sm">Programmatic Access</label>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="permissions" className="space-y-4">
@@ -251,20 +325,22 @@ const IAMDashboard = () => {
                       <h3 className="font-medium mb-2">Add user to groups</h3>
                       <div className="space-y-2">
                         {groups.map((group) => (
-                          <div key={group} className="flex items-center space-x-2">
+                          <div key={group.id} className="flex items-center space-x-2">
                             <input
                               type="checkbox"
-                              id={group}
-                              checked={newUser.groups.includes(group)}
+                              id={group.name}
+                              checked={newUser.groups.includes(group.name)}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  setNewUser({...newUser, groups: [...newUser.groups, group]});
+                                  setNewUser({...newUser, groups: [...newUser.groups, group.name]});
                                 } else {
-                                  setNewUser({...newUser, groups: newUser.groups.filter(g => g !== group)});
+                                  setNewUser({...newUser, groups: newUser.groups.filter(g => g !== group.name)});
                                 }
                               }}
                             />
-                            <label htmlFor={group} className="text-sm">{group}</label>
+                            <label htmlFor={group.name} className="text-sm">
+                              {group.name} - {group.description}
+                            </label>
                           </div>
                         ))}
                       </div>
@@ -278,7 +354,9 @@ const IAMDashboard = () => {
                       <h3 className="font-medium">User Details</h3>
                       <p className="text-sm text-gray-600">Username: {newUser.username}</p>
                       <p className="text-sm text-gray-600">Email: {newUser.email}</p>
-                      <p className="text-sm text-gray-600">Access Type: {newUser.accessType}</p>
+                      <p className="text-sm text-gray-600">Full Name: {newUser.full_name}</p>
+                      <p className="text-sm text-gray-600">Console Access: {newUser.console_access ? 'Yes' : 'No'}</p>
+                      <p className="text-sm text-gray-600">Programmatic Access: {newUser.programmatic_access ? 'Yes' : 'No'}</p>
                     </div>
                     <div>
                       <h3 className="font-medium">Groups</h3>
@@ -295,7 +373,7 @@ const IAMDashboard = () => {
                 <Button 
                   onClick={handleCreateUser}
                   className="bg-[#FF9900] hover:bg-[#e8890a]"
-                  disabled={!newUser.username || !newUser.email}
+                  disabled={!newUser.username || !newUser.email || !newUser.password}
                 >
                   Create User
                 </Button>
@@ -351,7 +429,7 @@ const IAMDashboard = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="actions">Actions</Label>
+                  <Label htmlFor="actions">Actions (comma-separated)</Label>
                   <Input
                     id="actions"
                     placeholder="s3:GetObject, s3:PutObject"
@@ -360,22 +438,12 @@ const IAMDashboard = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="resources">Resources</Label>
+                  <Label htmlFor="resources">Resources (comma-separated)</Label>
                   <Input
                     id="resources"
                     placeholder="arn:aws:s3:::my-bucket/*"
                     value={newPolicy.resources}
                     onChange={(e) => setNewPolicy({...newPolicy, resources: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="policyDocument">Policy Document (JSON)</Label>
-                  <Textarea
-                    id="policyDocument"
-                    className="h-32 font-mono"
-                    placeholder='{&#10;  "Version": "2012-10-17",&#10;  "Statement": [&#10;    {&#10;      "Effect": "Allow",&#10;      "Action": "s3:GetObject",&#10;      "Resource": "*"&#10;    }&#10;  ]&#10;}'
-                    value={newPolicy.document}
-                    onChange={(e) => setNewPolicy({...newPolicy, document: e.target.value})}
                   />
                 </div>
               </div>
@@ -438,7 +506,7 @@ const IAMDashboard = () => {
             <Key className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPolicies}</div>
+            <div className="text-2xl font-bold">{policies.length}</div>
             <p className="text-xs text-muted-foreground">Total policies</p>
           </CardContent>
         </Card>
@@ -462,17 +530,27 @@ const IAMDashboard = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{user.username}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                        {user.groups && user.groups.length > 0 && (
+                          <div className="text-xs text-blue-600">
+                            Groups: {user.groups.join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(user.status)}>
                         {user.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.mfaEnabled ? "default" : "outline"}>
-                        {user.mfaEnabled ? "Enabled" : "Disabled"}
+                      <Badge variant={user.mfa_enabled ? "default" : "outline"}>
+                        {user.mfa_enabled ? "Enabled" : "Disabled"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -480,7 +558,12 @@ const IAMDashboard = () => {
                         <Button size="sm" variant="outline">
                           <Settings className="h-3 w-3" />
                         </Button>
-                        <Button size="sm" variant="outline" className="text-red-600">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600"
+                          onClick={() => handleDeleteUser(user.id, user.username)}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -503,26 +586,31 @@ const IAMDashboard = () => {
                 <TableRow>
                   <TableHead>Policy Name</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Attached</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {policies.map((policy, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{policy.name}</TableCell>
+                {policies.map((policy) => (
+                  <TableRow key={policy.id}>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{policy.name}</div>
+                        {policy.description && (
+                          <div className="text-xs text-gray-500">{policy.description}</div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={policy.type === "AWS Managed" ? "default" : "secondary"}>
-                        {policy.type}
+                      <Badge variant={policy.policy_type === "AWS Managed" ? "default" : "secondary"}>
+                        {policy.policy_type}
                       </Badge>
                     </TableCell>
-                    <TableCell>{policy.attachedTo}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button size="sm" variant="outline">
                           <Settings className="h-3 w-3" />
                         </Button>
-                        {policy.type === "Customer Managed" && (
+                        {policy.policy_type === "Customer Managed" && (
                           <Button size="sm" variant="outline" className="text-red-600">
                             <Trash2 className="h-3 w-3" />
                           </Button>

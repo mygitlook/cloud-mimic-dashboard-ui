@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { billingService } from './billingService';
 
 export interface Instance {
   id: string;
@@ -59,6 +60,10 @@ export const supabaseService = {
       .single();
     
     if (error) throw error;
+
+    // Track instance creation usage
+    await billingService.simulateInstanceUsage(data.id, instance.type);
+
     return {
       ...data,
       state: data.state as "running" | "stopped" | "rebooting"
@@ -74,6 +79,12 @@ export const supabaseService = {
       .single();
     
     if (error) throw error;
+
+    // Track additional usage if state changed to running
+    if (updates.state === 'running') {
+      await billingService.simulateInstanceUsage(id, data.type);
+    }
+
     return {
       ...data,
       state: data.state as "running" | "stopped" | "rebooting"
@@ -145,5 +156,22 @@ export const supabaseService = {
     
     if (error) throw error;
     return data;
+  },
+
+  // Billing functions
+  async getCurrentMonthBilling() {
+    return billingService.getBillingSummary();
+  },
+
+  async getAllBillingPeriods() {
+    return billingService.getAllBillingPeriods();
+  },
+
+  async getCurrentMonthUsage() {
+    return billingService.getCurrentMonthUsage();
+  },
+
+  async generateMonthlyBilling() {
+    return billingService.generateCurrentMonthBilling();
   }
 };
