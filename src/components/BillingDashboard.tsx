@@ -16,7 +16,8 @@ import {
   FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generatePDFInvoice } from "@/utils/pdfInvoice";
+import { generatePDFInvoice, saveInvoiceRecord } from "@/utils/pdfInvoice";
+import InvoiceHistory from "./InvoiceHistory";
 
 const BillingDashboard = () => {
   const { toast } = useToast();
@@ -26,6 +27,17 @@ const BillingDashboard = () => {
   const forecastedCost = 31245.00;
   const budgetLimit = 30000.00;
   const budgetUsed = (currentMonthCost / budgetLimit) * 100;
+
+  // Generate current month bill name dynamically
+  const getCurrentMonthBill = () => {
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${monthNames[prevMonth.getMonth()]} ${prevMonth.getFullYear()}`;
+  };
 
   const costByService = [
     { service: "Machine Learning", cost: 10000.00, percentage: 39.6, change: "+12.3%", units: "4 instances" },
@@ -62,7 +74,7 @@ const BillingDashboard = () => {
   ];
 
   const bills = [
-    { month: "January 2024", amount: 25277.00, status: "current", dueDate: "2024-02-01" },
+    { month: getCurrentMonthBill(), amount: 25277.00, status: "current", dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB') },
     { month: "December 2023", amount: 18942.00, status: "paid", dueDate: "2024-01-01" },
     { month: "November 2023", amount: 20317.50, status: "paid", dueDate: "2023-12-01" },
     { month: "October 2023", amount: 17695.20, status: "paid", dueDate: "2023-11-01" },
@@ -90,16 +102,17 @@ const BillingDashboard = () => {
     }
   ];
 
-  const handleDownloadBill = (billMonth: string, amount: number) => {
+  const handleDownloadBill = async (billMonth: string, amount: number) => {
     try {
-      generatePDFInvoice(billMonth, amount);
+      await generatePDFInvoice(billMonth, amount);
+      await saveInvoiceRecord(billMonth, amount);
       toast({
         title: "Invoice Generated",
         description: `PDF invoice for ${billMonth} has been generated successfully`,
       });
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Failed to generate PDF invoice. Please try again.",
         variant: "destructive",
       });
@@ -204,7 +217,8 @@ const BillingDashboard = () => {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Cost Overview</TabsTrigger>
-          <TabsTrigger value="bills">Bills</TabsTrigger>
+          <TabsTrigger value="bills">Current Bills</TabsTrigger>
+          <TabsTrigger value="history">Invoice History</TabsTrigger>
           <TabsTrigger value="budgets">Budgets & Alerts</TabsTrigger>
           <TabsTrigger value="reports">Cost Explorer</TabsTrigger>
         </TabsList>
@@ -311,8 +325,8 @@ const BillingDashboard = () => {
         <TabsContent value="bills" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Billing History</CardTitle>
-              <CardDescription>View and download your Zeltra Connect bills</CardDescription>
+              <CardTitle>Current Billing Period</CardTitle>
+              <CardDescription>Current month bills and recent invoices</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -326,7 +340,7 @@ const BillingDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bills.map((bill) => (
+                  {bills.slice(0, 3).map((bill) => (
                     <TableRow key={bill.month}>
                       <TableCell className="font-medium">{bill.month}</TableCell>
                       <TableCell>£{bill.amount.toLocaleString()}</TableCell>
@@ -372,6 +386,10 @@ const BillingDashboard = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <InvoiceHistory />
         </TabsContent>
 
         <TabsContent value="budgets" className="space-y-6">

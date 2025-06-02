@@ -21,7 +21,7 @@ export interface BillingSummary {
   billing_period: string;
   total_amount: number;
   currency: string;
-  status: 'pending' | 'paid' | 'overdue';
+  status: 'pending' | 'paid' | 'overdue' | 'generated';
   invoice_data: any;
   generated_at: string;
   updated_at: string;
@@ -86,12 +86,12 @@ export const billingService = {
     if (error) throw error;
     return data ? {
       ...data,
-      status: data.status as 'pending' | 'paid' | 'overdue'
+      status: data.status as 'pending' | 'paid' | 'overdue' | 'generated'
     } : null;
   },
 
-  // Get all billing periods for user
-  async getAllBillingPeriods(): Promise<BillingSummary[]> {
+  // Get all billing periods for user with pagination
+  async getAllBillingPeriods(limit: number = 12, offset: number = 0): Promise<BillingSummary[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -99,12 +99,36 @@ export const billingService = {
       .from('billing_summary')
       .select('*')
       .eq('user_id', user.id)
+      .order('billing_period', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      status: item.status as 'pending' | 'paid' | 'overdue' | 'generated'
+    }));
+  },
+
+  // Get invoices by year
+  async getInvoicesByYear(year: number): Promise<BillingSummary[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const { data, error } = await supabase
+      .from('billing_summary')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('billing_period', startDate)
+      .lte('billing_period', endDate)
       .order('billing_period', { ascending: false });
 
     if (error) throw error;
     return (data || []).map(item => ({
       ...item,
-      status: item.status as 'pending' | 'paid' | 'overdue'
+      status: item.status as 'pending' | 'paid' | 'overdue' | 'generated'
     }));
   },
 

@@ -1,13 +1,56 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
+// Get user profile data for invoice personalization
+const getUserProfile = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, username')
+    .eq('id', user.id)
+    .single();
+
+  return {
+    email: user.email,
+    fullName: profile?.full_name || 'Valued Customer',
+    username: profile?.username || user.email?.split('@')[0] || 'customer'
+  };
+};
+
+// Calculate billing period (previous month)
+const getBillingPeriod = (invoiceDate: Date = new Date()) => {
+  const previousMonth = new Date(invoiceDate);
+  previousMonth.setMonth(previousMonth.getMonth() - 1);
+  
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  return `${monthNames[previousMonth.getMonth()]} ${previousMonth.getFullYear()}`;
+};
+
 // PDF Invoice generation utility
-export const generatePDFInvoice = (billMonth: string, amount: number) => {
+export const generatePDFInvoice = async (billMonth?: string, amount: number = 25277.00) => {
+  const userProfile = await getUserProfile();
+  const invoiceDate = new Date();
+  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const billingPeriod = billMonth || getBillingPeriod(invoiceDate);
+  const invoiceNumber = `ZC-${Date.now()}`;
+
+  if (!userProfile) {
+    throw new Error('Unable to retrieve user information for invoice generation');
+  }
+
   // Create PDF content using HTML and CSS (simple PDF generation)
   const invoiceContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Zeltra Connect Invoice - ${billMonth}</title>
+  <title>Zeltra Connect Invoice - ${billingPeriod}</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
     .header { border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
@@ -40,20 +83,21 @@ export const generatePDFInvoice = (billMonth: string, amount: number) => {
     <div class="invoice-title">INVOICE</div>
     <div class="invoice-meta">
       <div>
-        <strong>Invoice Number:</strong> ZC-${Date.now()}<br>
-        <strong>Invoice Date:</strong> ${new Date().toLocaleDateString('en-GB')}<br>
-        <strong>Due Date:</strong> ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB')}
+        <strong>Invoice Number:</strong> ${invoiceNumber}<br>
+        <strong>Invoice Date:</strong> ${invoiceDate.toLocaleDateString('en-GB')}<br>
+        <strong>Due Date:</strong> ${dueDate.toLocaleDateString('en-GB')}
       </div>
       <div>
-        <strong>Billing Period:</strong> ${billMonth}
+        <strong>Billing Period:</strong> ${billingPeriod}
       </div>
     </div>
   </div>
 
   <div class="bill-to">
     <strong>Bill To:</strong><br>
-    John Paul<br>
-    Customer Account: john_paul<br>
+    ${userProfile.fullName}<br>
+    Customer Account: ${userProfile.username}<br>
+    Email: ${userProfile.email}<br>
     Zeltra Connect Services
   </div>
 
@@ -167,4 +211,30 @@ export const generatePDFInvoice = (billMonth: string, amount: number) => {
       }, 500);
     };
   }
+};
+
+// Store invoice in database for future access
+export const saveInvoiceRecord = async (billMonth: string, amount: number) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const billingPeriod = billMonth || getBillingPeriod();
+  const invoiceNumber = `ZC-${Date.now()}`;
+
+  const { error } = await supabase
+    .from('billing_summary')
+    .upsert({
+      user_id: user.id,
+      billing_period: new Date(billingPeriod + '-01').toISOString().split('T')[0],
+      total_amount: amount,
+      status: 'generated',
+      invoice_data: {
+        invoice_number: invoiceNumber,
+        generated_at: new Date().toISOString(),
+        billing_period: billingPeriod
+      }
+    });
+
+  if (error) throw error;
+  return invoiceNumber;
 };
