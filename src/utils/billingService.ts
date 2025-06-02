@@ -84,7 +84,10 @@ export const billingService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data;
+    return data ? {
+      ...data,
+      status: data.status as 'pending' | 'paid' | 'overdue'
+    } : null;
   },
 
   // Get all billing periods for user
@@ -99,7 +102,10 @@ export const billingService = {
       .order('billing_period', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      status: item.status as 'pending' | 'paid' | 'overdue'
+    }));
   },
 
   // Calculate and generate current month billing

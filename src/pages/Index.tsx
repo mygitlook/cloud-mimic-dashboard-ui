@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import AWSHeader from "@/components/AWSHeader";
+import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import EC2Dashboard from "@/components/EC2Dashboard";
 import IAMDashboard from "@/components/IAMDashboard";
 import S3Dashboard from "@/components/S3Dashboard";
@@ -73,17 +74,51 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AWSHeader 
-        activeService={activeService} 
-        setActiveService={setActiveService}
-        onSignOut={signOut}
-        userEmail={user.email}
-      />
-      <main className="flex-1 p-6">
-        {renderDashboard()}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gray-50">
+        <AppSidebar 
+          activeService={activeService} 
+          setActiveService={setActiveService}
+          onSignOut={signOut}
+          userEmail={user.email}
+        />
+        <SidebarInset className="flex-1">
+          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex items-center space-x-2 ml-4">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {(() => {
+                  const serviceNames = {
+                    ec2: "EC2 Instances",
+                    iam: "Identity & Access Management",
+                    s3: "Simple Storage Service",
+                    rds: "Relational Database Service",
+                    lambda: "Lambda Functions",
+                    vpc: "Virtual Private Cloud",
+                    cloudformation: "CloudFormation",
+                    monitoring: "CloudWatch Monitoring",
+                    billing: "Billing & Cost Management",
+                    cdn: "CloudFront CDN",
+                    waf: "Web Application Firewall",
+                    elb: "Elastic Load Balancer",
+                    "data-transfer": "Data Transfer",
+                    backup: "Backup Storage",
+                    archive: "Glacier Archive",
+                    support: "Premium Support",
+                    ml: "SageMaker ML",
+                    deployment: "Deployment Guide"
+                  };
+                  return serviceNames[activeService as keyof typeof serviceNames] || "Dashboard";
+                })()}
+              </h1>
+            </div>
+          </header>
+          <main className="flex-1 p-6">
+            {renderDashboard()}
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

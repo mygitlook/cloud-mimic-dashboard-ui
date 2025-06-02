@@ -53,6 +53,7 @@ export const iamService = {
     
     return (data || []).map(user => ({
       ...user,
+      status: user.status as 'active' | 'inactive' | 'suspended',
       groups: user.iam_user_groups?.map((ug: any) => ug.iam_groups.name) || []
     }));
   },
@@ -93,7 +94,11 @@ export const iamService = {
       await this.assignUserToGroups(newUser.id, userData.groups);
     }
 
-    return { ...newUser, groups: userData.groups || [] };
+    return { 
+      ...newUser, 
+      status: newUser.status as 'active' | 'inactive' | 'suspended',
+      groups: userData.groups || [] 
+    };
   },
 
   async updateIAMUser(id: string, updates: Partial<IAMUser>): Promise<IAMUser> {
@@ -105,7 +110,10 @@ export const iamService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      status: data.status as 'active' | 'inactive' | 'suspended'
+    };
   },
 
   async deleteIAMUser(id: string): Promise<void> {
@@ -150,7 +158,10 @@ export const iamService = {
       .order('name');
     
     if (error) throw error;
-    return data || [];
+    return (data || []).map(policy => ({
+      ...policy,
+      policy_type: policy.policy_type as 'AWS Managed' | 'Customer Managed'
+    }));
   },
 
   async createIAMPolicy(policyData: {
@@ -169,7 +180,10 @@ export const iamService = {
       .single();
     
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      policy_type: data.policy_type as 'AWS Managed' | 'Customer Managed'
+    };
   },
 
   // User-Group assignments
