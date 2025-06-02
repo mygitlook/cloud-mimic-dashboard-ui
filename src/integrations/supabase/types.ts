@@ -85,6 +85,133 @@ export type Database = {
           },
         ]
       }
+      campaign_attachments: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_attachments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          failed_count: number | null
+          id: string
+          message: string | null
+          name: string
+          sent_count: number | null
+          status: string | null
+          total_contacts: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed_count?: number | null
+          id?: string
+          message?: string | null
+          name: string
+          sent_count?: number | null
+          status?: string | null
+          total_contacts?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          failed_count?: number | null
+          id?: string
+          message?: string | null
+          name?: string
+          sent_count?: number | null
+          status?: string | null
+          total_contacts?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          delivered_at: string | null
+          group_name: string | null
+          id: string
+          name: string
+          phone: string
+          sent_at: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          group_name?: string | null
+          id?: string
+          name: string
+          phone: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          group_name?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instances: {
         Row: {
           ami: string | null

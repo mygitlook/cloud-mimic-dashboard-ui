@@ -20,6 +20,7 @@ const AuthPage = () => {
     username: "" 
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +72,9 @@ const AuthPage = () => {
         title: "Account Created",
         description: "Please check your email to verify your account.",
       });
+      // Clear signup form and redirect to login tab
+      setSignupData({ email: "", password: "", fullName: "", username: "" });
+      setActiveTab("login");
     }
     setIsLoading(false);
   };
@@ -90,7 +94,7 @@ const AuthPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
