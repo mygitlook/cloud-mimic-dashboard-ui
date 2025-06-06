@@ -44,6 +44,33 @@ export type Database = {
           },
         ]
       }
+      admin_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       billing: {
         Row: {
           created_at: string | null
@@ -508,11 +535,137 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          contact_mobile: string | null
+          contact_person: string | null
+          created_at: string | null
+          created_by: string | null
+          designation: string | null
+          email: string | null
+          id: string
+          institute_name: string
+          institute_type: string
+          last_contact_date: string | null
+          lead_source: string | null
+          mobile: string | null
+          modules: string[] | null
+          next_follow_up: string | null
+          notes: string | null
+          priority: string | null
+          sales_value: number | null
+          status: string | null
+          student_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          institute_name: string
+          institute_type: string
+          last_contact_date?: string | null
+          lead_source?: string | null
+          mobile?: string | null
+          modules?: string[] | null
+          next_follow_up?: string | null
+          notes?: string | null
+          priority?: string | null
+          sales_value?: number | null
+          status?: string | null
+          student_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          institute_name?: string
+          institute_type?: string
+          last_contact_date?: string | null
+          lead_source?: string | null
+          mobile?: string | null
+          modules?: string[] | null
+          next_follow_up?: string | null
+          notes?: string | null
+          priority?: string | null
+          sales_value?: number | null
+          status?: string | null
+          student_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_config: {
+        Row: {
+          base_price: number
+          created_at: string | null
+          currency: string | null
+          id: string
+          is_active: boolean | null
+          pricing_model: string
+          service_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          is_active?: boolean | null
+          pricing_model: string
+          service_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          is_active?: boolean | null
+          pricing_model?: string
+          service_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          email: string
           full_name: string | null
           id: string
+          is_active: boolean | null
           permissions: Json | null
           role: string | null
           updated_at: string | null
@@ -520,8 +673,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
+          email: string
           full_name?: string | null
           id: string
+          is_active?: boolean | null
           permissions?: Json | null
           role?: string | null
           updated_at?: string | null
@@ -529,8 +685,11 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
+          email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           permissions?: Json | null
           role?: string | null
           updated_at?: string | null
@@ -621,6 +780,42 @@ export type Database = {
           },
         ]
       }
+      user_billing: {
+        Row: {
+          billing_period: string
+          cost: number | null
+          created_at: string | null
+          id: string
+          resource_id: string | null
+          service_type: string
+          updated_at: string | null
+          usage_amount: number | null
+          user_id: string | null
+        }
+        Insert: {
+          billing_period: string
+          cost?: number | null
+          created_at?: string | null
+          id?: string
+          resource_id?: string | null
+          service_type: string
+          updated_at?: string | null
+          usage_amount?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          billing_period?: string
+          cost?: number | null
+          created_at?: string | null
+          id?: string
+          resource_id?: string | null
+          service_type?: string
+          updated_at?: string | null
+          usage_amount?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -630,9 +825,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      calculate_user_billing: {
+        Args: { p_user_id: string; p_billing_period: string }
+        Returns: number
+      }
       generate_monthly_billing: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
       }
       track_service_usage: {
         Args: {
@@ -647,7 +850,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "sales_person" | "manager" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -762,6 +965,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "sales_person", "manager", "viewer"],
+    },
   },
 } as const
